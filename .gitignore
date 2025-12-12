@@ -14,3 +14,11 @@ venv/
 # Data (計算結果などの巨大ファイルは無視)
 data/*.npy
 animation/*.mov
+
+# フォルダごと無視する設定（推奨）
+data/
+animation/
+
+# または拡張子で広く無視する設定
+*.npy
+*.mov
