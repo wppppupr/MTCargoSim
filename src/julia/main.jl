@@ -22,7 +22,7 @@ using ArgParse
     r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18                 # 時間スケール [t]
-    dt::Float64 = 0.1                   # タイムステップ
+    dt::Float64 = 0.01                   # タイムステップ
     noise_std::Float64 = 0.455          # ノイズの標準偏差 [rad]
     k_cargo::Float64 = 0.001
     k_MT::Float64 = 0.004               # 微小管の速度摩擦係数
@@ -51,7 +51,7 @@ function Parameters(;
     r_int::Float64 = 0.1,                # 相互作用半径
     box_size::Float64 = 16.0,            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18,                 # 時間スケール
-    dt::Float64 = 0.1,                   # タイムステップ
+    dt::Float64 = 0.01,                   # タイムステップ
     noise_std::Float64 = 0.455,          # ノイズの標準偏差
     k_cargo::Float64 = 0.001,
     k_MT::Float64 = 0.004,               # 微小管の速度摩擦係数
@@ -315,7 +315,7 @@ function parse_commandline()
         "--steps", "-n"
             help = "Number of simulation steps (default: 1000)"
             arg_type = Int
-            default = 1000
+            default = 10000
     end
 
     return parse_args(s)
