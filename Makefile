@@ -7,6 +7,12 @@ STEPS ?= 1000
 WARMUP ?= 1000
 
 # --- コマンド定義 ---
+
+# --- バックアップ設定 ---
+# NASのリモート名（git remote -v で確認したもの）
+REMOTE_NAME = nas
+BRANCH_NAME = main
+
 # Macの標準的なpythonコマンド(venv等あれば適宜変更)
 PYTHON_CMD = python3
 JULIA_CMD = julia --project=.
@@ -42,6 +48,15 @@ $(ANIM_FILE): $(DATA_FILE) $(PYTHON_SRC)
 $(DATA_FILE): $(JULIA_SRC)
 	@echo "🧪 Juliaでシミュレーション計算中... (P=$(P), A=$(A), F=$(F))"
 	$(JULIA_CMD) $(JULIA_SRC) --packing_fraction $(P) --A $(A) --force $(F) --seed $(SEED) --steps $(STEPS) --warmup $(WARMUP)
+
+.PHONY: backup
+backup:
+	@echo "💾 NASへバックアップ中..."
+	# コミットされていない変更があれば、自動コミットする（オプション）
+	-git add . && git commit -m "Auto-backup via Makefile"
+	# Push実行
+	git push $(REMOTE_NAME) $(BRANCH_NAME)
+	@echo "✅ バックアップ完了"
 
 # 生成物を削除
 clean:
