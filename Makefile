@@ -10,7 +10,7 @@ WARMUP ?= 1000
 
 # --- バックアップ設定 ---
 # NASのリモート名（git remote -v で確認したもの）
-REMOTE_NAME = nas
+REMOTE_NAME = NAS
 BRANCH_NAME = main
 
 # Macの標準的なpythonコマンド(venv等あれば適宜変更)
