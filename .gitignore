@@ -1,17 +1,16 @@
-# --- Mac ---
+# Mac
 .DS_Store
 
-# --- Python/Conda ---
+# Python
 __pycache__/
-.ipynb_checkpoints/
+venv/
 .env
 
-# --- Julia ---
+# Julia
 *.ji
 *.jld2
 .julia/
 
-# --- Data (成果物) ---
-data/*.npz
-data/*.png
-data/*.mp4
+# Data (計算結果などの巨大ファイルは無視)
+data/*.npy
+animation/*.mov

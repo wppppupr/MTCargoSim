@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import argparse
 from matplotlib.animation import FuncAnimation
 
 def animate_onlyMT(P, A, F, seed=1, box_size=16):
@@ -138,5 +139,14 @@ def animate(P, A, F, seed=1, box_size=16):
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
-#animate_onlyMT(path, f"{path}.mov")
-animate(P=0.5, A=0.5, F=0.001, seed=1)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Create animation from simulation data")
+    parser.add_argument("--P", type=float, default=0.5, help="Packing fraction")
+    parser.add_argument("--A", type=float, default=0.5, help="Alignment strength")
+    parser.add_argument("--F", type=float, default=0.001, help="Force")
+    parser.add_argument("--seed", type=int, default=1, help="Random seed")
+    
+    args = parser.parse_args()
+
+    # コマンドライン引数を使って関数を実行
+    animate(P=args.P, A=args.A, F=args.F, seed=args.seed)
