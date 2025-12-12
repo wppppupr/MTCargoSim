@@ -13,6 +13,9 @@ WARMUP ?= 1000
 REMOTE_NAME = NAS
 BRANCH_NAME = main
 
+# NASのバックアップ先フォルダパス (末尾にスラッシュをつけない)
+NAS_PATH = /Volumes/data/Sasaki/backup_git/MTCargoSim
+
 # Macの標準的なpythonコマンド(venv等あれば適宜変更)
 PYTHON_CMD = python3
 JULIA_CMD = julia --project=.
@@ -57,6 +60,43 @@ backup:
 	# Push実行
 	git push $(REMOTE_NAME) $(BRANCH_NAME)
 	@echo "✅ バックアップ完了"
+
+# --- フルバックアップ設定 (rsync) ---
+
+.PHONY: sync
+sync:
+	@echo "📦 プロジェクトを丸ごとNASに同期中..."
+	# -a: アーカイブモード (属性維持)
+	# -v: 詳細表示
+	# --delete: ローカルで消したファイルはNASからも消す (完全同期)
+	# --exclude: .gitフォルダは巨大になるので除外してもOK (Gitで管理してるなら)
+	mkdir -p $(NAS_PATH)
+	rsync -av --delete --exclude '.git' ./ $(NAS_PATH)
+	@echo "✅ 全データの同期が完了しました: $(NAS_PATH)"
+
+# --- 一括バックアップ設定 ---
+
+.PHONY: save
+save:
+	@echo "🚀 プロジェクト全体の完全バックアップを開始します..."
+	
+	@echo "----------------------------------------"
+	@echo "1. Git: ソースコードと履歴の保存"
+	@echo "----------------------------------------"
+	# 変更を全てステージング
+	git add .
+	# 日付入りで自動コミット (変更がない場合はエラーにせず通過させる '|| true')
+	git commit -m "Auto-save: $$(date '+%Y-%m-%d %H:%M:%S')" || echo "⚠️ コミットする変更はありませんでした。"
+	# GitHub (またはNASのGitリポジトリ) へ送信
+	git push origin main
+	
+	@echo "----------------------------------------"
+	@echo "2. NAS: データファイル(npy/mov)の同期"
+	@echo "----------------------------------------"
+	# 既存の sync タスクを呼び出す
+	$(MAKE) sync
+	
+	@echo "✅ 全てのバックアップが完了しました！"
 
 # 生成物を削除
 clean:
