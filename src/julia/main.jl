@@ -22,7 +22,7 @@ using ArgParse
     r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18                 # 時間スケール [t]
-    dt::Float64 = 0.1                   # タイムステップ
+    dt::Float64 = 0.01                   # タイムステップ
     noise_std::Float64 = 0.455          # ノイズの標準偏差 [rad]
     k_cargo::Float64 = 0.001
     k_MT::Float64 = 0.004               # 微小管の速度摩擦係数
@@ -32,6 +32,7 @@ using ArgParse
     num_particles::Int
     interaction_radius::Float64
     r_out::Float64                      # 貨物と微小管の相互作用範囲
+    r_dna::Float64
     dna_l::Float64
 end
 
@@ -51,7 +52,7 @@ function Parameters(;
     r_int::Float64 = 0.1,                # 相互作用半径
     box_size::Float64 = 16.0,            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18,                 # 時間スケール
-    dt::Float64 = 0.1,                   # タイムステップ
+    dt::Float64 = 0.01,                   # タイムステップ
     noise_std::Float64 = 0.455,          # ノイズの標準偏差
     k_cargo::Float64 = 0.001,
     k_MT::Float64 = 0.004,               # 微小管の速度摩擦係数
@@ -61,6 +62,7 @@ function Parameters(;
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
     interaction_radius = r_int / cargo_radius
     r_out = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
+    r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / cargo_radius
     dna_l = dna / cargo_radius
 
     # 全てのパラメータを渡して、Parametersオブジェクトを生成して返す
@@ -73,7 +75,7 @@ function Parameters(;
         k_MT, dna,
         num_particles,
         interaction_radius,
-        r_out,
+        r_out, r_dna,
         dna_l
     )
 end
@@ -84,9 +86,9 @@ mutable struct Datas
     cargo_positions::Matrix{Float64}    # 1 x 2
 end
 
+# スムーズな関数（既存式）
 function dna_force(f, r, r_out)
-    # スムーズな関数
-    return - 2 * f .* r .* exp.(-r.^2)
+    return -2 .* f .* r .* exp.(-(r.^2)./(r_out^2)) ./r_out^2 
 end
 
 function initialize(params::Parameters)
@@ -173,6 +175,7 @@ function transport_step!(data::Datas, params::Parameters)
     tau = params.tau
     k_cargo = params.k_cargo
     k_MT = params.k_MT
+    r_dna = params.r_dna
 
     N = params.num_particles
     alignment_term = zeros(N)
