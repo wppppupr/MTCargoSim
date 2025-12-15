@@ -135,7 +135,7 @@ def animate(P, A, F, seed=1, box_size=16):
         
         print(f"アニメーションを '{save_path}' に保存しています...")
         ani = FuncAnimation(fig, update, frames=len(positions_history), blit=True, interval=0.1)
-        ani.save(save_path, writer='ffmpeg', fps=20, dpi=100)
+        ani.save(save_path, writer='ffmpeg', fps=100, dpi=150)
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
