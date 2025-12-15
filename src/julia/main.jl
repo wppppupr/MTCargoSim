@@ -85,11 +85,16 @@ mutable struct Datas
 end
 
 function dna_force(f, r, r_out)
+    """
+    # ステップ関数
     if r < r_out
         return -f
     else
         return 0.0
     end
+    """
+    # スムーズな関数
+    return - 2 * f .* r .* exp.(-r.^2)
 end
 
 function initialize(params::Parameters)
