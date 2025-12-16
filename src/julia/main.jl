@@ -23,8 +23,8 @@ using ArgParse
     tau::Float64 = 1.18                 # 時間スケール [t]
     dt::Float64 = 0.01                   # タイムステップ
     noise_std::Float64 = 0.455          # ノイズの標準偏差 [rad]
-    k_cargo::Float64 = 0.001
-    k_MT::Float64 = 0.004               # 微小管の速度摩擦係数
+    k_cargo::Float64 = 1.0e-9
+    k_MT::Float64 = 4.0e-9               # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
     epsilon::Float64 = 6.57e-10        # DNAのエネルギースケール [J]
 
@@ -53,8 +53,8 @@ function Parameters(;
     tau::Float64 = 1.18,                 # 時間スケール
     dt::Float64 = 0.01,                   # タイムステップ
     noise_std::Float64 = 0.455,          # ノイズの標準偏差
-    k_cargo::Float64 = 0.001,
-    k_MT::Float64 = 0.004,               # 微小管の速度摩擦係数
+    k_cargo::Float64 = 1.0e-9,
+    k_MT::Float64 = 4.0e-9,               # 微小管の速度摩擦係数
     dna::Float64 = 0.01,                 # DNAの長さ [µm]
     epsilon::Float64 = 6.57e-10        # DNAのエネルギースケール [J]
 )
