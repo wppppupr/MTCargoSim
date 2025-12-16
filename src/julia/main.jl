@@ -13,7 +13,6 @@ using ArgParse
     # --- ユーザーが指定する基本パラメータ ---
     packing_fraction::Float64           # 密度 (必須)
     A::Float64                          # 整列相互作用の強さ (必須)
-    force::Float64                      # 微小管と荷物を繋ぐ張力 (必須)
     seed::Int                           # 乱数シード
     
     # --- デフォルト値を持つ基本パラメータ ---
@@ -27,11 +26,12 @@ using ArgParse
     k_cargo::Float64 = 0.001
     k_MT::Float64 = 0.004               # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
+    epsilon::Float64 = 6.57e-10        # DNAのエネルギースケール [J]
 
     # --- 計算によって決まる派生パラメータ ---
     num_particles::Int
     interaction_radius::Float64
-    r_out::Float64                      # 貨物と微小管の相互作用範囲
+    r_a::Float64                      # 貨物と微小管の相互作用範囲
     r_dna::Float64
     dna_l::Float64
 end
@@ -43,7 +43,6 @@ function Parameters(;
     # 必須パラメータ
     packing_fraction::Float64,
     A::Float64,
-    force::Float64,
     seed::Int,
 
     # デフォルト値を持つパラメータ
@@ -56,12 +55,13 @@ function Parameters(;
     noise_std::Float64 = 0.455,          # ノイズの標準偏差
     k_cargo::Float64 = 0.001,
     k_MT::Float64 = 0.004,               # 微小管の速度摩擦係数
-    dna::Float64 = 0.01                 # DNAの長さ [µm]
+    dna::Float64 = 0.01,                 # DNAの長さ [µm]
+    epsilon::Float64 = 6.57e-10        # DNAのエネルギースケール [J]
 )
     # 派生パラメータを計算する
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
     interaction_radius = r_int / cargo_radius
-    r_out = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
+    r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
     r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / cargo_radius
     dna_l = dna / cargo_radius
 
@@ -69,13 +69,13 @@ function Parameters(;
     # 呼び出しをキーワード引数ではなく位置引数にして、
     # この外部コンストラクタ自身への再帰呼び出しを避ける。
     return Parameters(
-        packing_fraction, A, force, seed,
+        packing_fraction, A, seed,
         cargo_radius, d_MT, r_int, box_size,
         tau, dt, noise_std, k_cargo,
-        k_MT, dna,
+        k_MT, dna, epsilon,
         num_particles,
         interaction_radius,
-        r_out, r_dna,
+        r_a, r_dna,
         dna_l
     )
 end
@@ -87,8 +87,8 @@ mutable struct Datas
 end
 
 # スムーズな関数（既存式）
-function dna_force(f, r, r_out)
-    return -2 .* f .* r .* exp.(-(r.^2)./(r_out^2)) ./r_out^2 
+function dna_force(epsilon, r, r_a)
+    return -2 .* epsilon .* r .* exp.(-(r.^2)./(r_a^2)) ./r_a^2 
 end
 
 function initialize(params::Parameters)
@@ -165,17 +165,16 @@ end
 function transport_step!(data::Datas, params::Parameters)
     positions = data.positions
     orientations = data.orientations
-    force = params.force
     cargo_positions = data.cargo_positions
     box_size = params.box_size
     r_cut = params.interaction_radius
-    r_out = params.r_out
+    r_a = params.r_a
     A = params.A
     dt = params.dt
     tau = params.tau
     k_cargo = params.k_cargo
     k_MT = params.k_MT
-    r_dna = params.r_dna
+    epsilon = params.epsilon
 
     N = params.num_particles
     alignment_term = zeros(N)
@@ -226,7 +225,7 @@ function transport_step!(data::Datas, params::Parameters)
     r2 = dx.^2 + dy.^2
     r = sqrt.(r2)
 
-    f = dna_force.(force, r, r_out)
+    f = dna_force.(epsilon, r, r_a)
 
     force_cargo[1,:] += f .* dx ./ r
     force_cargo[2,:] += f .* dy ./ r
@@ -267,7 +266,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int;)
         cargo_history[:, :, step] = data.cargo_positions
     end
 
-    folder_path = "data/P$(params.packing_fraction)_A$(params.A)_F$(params.force)/seed$(params.seed)"
+    folder_path = "data/P$(params.packing_fraction)_A$(params.A)_epsilon$(params.epsilon)/seed$(params.seed)"
     # ディレクトリを作成してデータを保存
     mkpath(folder_path)
 
@@ -300,10 +299,6 @@ function parse_commandline()
             help = "Alignment interaction strength (default: 0.5)"
             arg_type = Float64
             default = 0.5
-        "--force", "-f"
-            help = "Force strength (default: 0.001)"
-            arg_type = Float64
-            default = 0.001
         "--seed", "-s"
             help = "Random seed (default: 1)"
             arg_type = Int
@@ -328,7 +323,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     println("実行パラメータ:")
     println("  packing_fraction = $(args["packing_fraction"])")
     println("  A = $(args["A"])")
-    println("  force = $(args["force"])")
     println("  seed = $(args["seed"])")
     println("  warmup steps = $(args["warmup"])")
     println("  simulation steps = $(args["steps"])")
@@ -337,7 +331,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     params = Parameters(
         packing_fraction=args["packing_fraction"],
         A=args["A"],
-        force=args["force"],
         seed=args["seed"]
     )
     
