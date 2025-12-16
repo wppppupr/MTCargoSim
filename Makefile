@@ -1,7 +1,6 @@
 # --- デフォルトパラメータ (コマンドラインで上書き可能) ---
 P ?= 0.5
 A ?= 0.5
-F ?= 0.0001
 SEED ?= 1
 STEPS ?= 10000
 WARMUP ?= 10000
@@ -22,12 +21,12 @@ JULIA_CMD = julia --project=.
 
 # --- ファイルパスの定義 ---
 # Juliaが出力するディレクトリパス (main.jlのロジックに合わせる)
-DATA_DIR = data/P$(P)_A$(A)_F$(F)/seed$(SEED)
+DATA_DIR = data/P$(P)_A$(A)/seed$(SEED)
 # ターゲットとなるデータファイル
 DATA_FILE = $(DATA_DIR)/positions_history.npy
 
 # Pythonが出力する動画ファイルパス (animate.pyのロジックに合わせる)
-ANIM_DIR = animation/P$(P)_A$(A)_F$(F)
+ANIM_DIR = animation/P$(P)_A$(A)
 ANIM_FILE = $(ANIM_DIR)/seed$(SEED).mov
 
 # --- ソースコード ---
@@ -45,12 +44,12 @@ all: $(ANIM_FILE)
 # ルール: 動画を作るには、データファイルとPythonコードが必要
 $(ANIM_FILE): $(DATA_FILE) $(PYTHON_SRC)
 	@echo "🎥 Pythonでアニメーション生成中..."
-	$(PYTHON_CMD) $(PYTHON_SRC) --P $(P) --A $(A) --F $(F) --seed $(SEED)
+	$(PYTHON_CMD) $(PYTHON_SRC) --P $(P) --A $(A) --seed $(SEED)
 
 # ルール: データファイルを作るには、Juliaコードが必要
 $(DATA_FILE): $(JULIA_SRC)
-	@echo "🧪 Juliaでシミュレーション計算中... (P=$(P), A=$(A), F=$(F))"
-	$(JULIA_CMD) $(JULIA_SRC) --packing_fraction $(P) --A $(A) --force $(F) --seed $(SEED) --steps $(STEPS) --warmup $(WARMUP)
+	@echo "🧪 Juliaでシミュレーション計算中... (P=$(P), A=$(A))"
+	$(JULIA_CMD) $(JULIA_SRC) --packing_fraction $(P) --A $(A) --seed $(SEED) --steps $(STEPS) --warmup $(WARMUP)
 
 .PHONY: backup
 backup:
