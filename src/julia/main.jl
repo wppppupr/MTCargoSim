@@ -266,7 +266,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int;)
         cargo_history[:, :, step] = data.cargo_positions
     end
 
-    folder_path = "data/P$(params.packing_fraction)_A$(params.A)_epsilon$(params.epsilon)/seed$(params.seed)"
+    folder_path = "data/P$(params.packing_fraction)_A$(params.A)/seed$(params.seed)"
     # ディレクトリを作成してデータを保存
     mkpath(folder_path)
 

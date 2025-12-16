@@ -4,7 +4,7 @@ import os
 import argparse
 from matplotlib.animation import FuncAnimation
 
-def animate_onlyMT(P, A, F, seed=1, box_size=16):
+def animate_onlyMT(P, A, seed=1, box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -13,8 +13,8 @@ def animate_onlyMT(P, A, F, seed=1, box_size=16):
             save_path (str): 保存する動画ファイルのパス (例: "path/to/animation.mov")
         """
 
-        data_folder = f"data/P{P}_A{A}_F{F}/seed{seed}"
-        save_folder = f"animation/P{P}_A{A}_F{F}"
+        data_folder = f"data/P{P}_A{A}/seed{seed}"
+        save_folder = f"animation/P{P}_A{A}"
         save_path = f"{save_folder}/seed{seed}.mov"
 
         # 保存フォルダを作成
@@ -63,7 +63,7 @@ def animate_onlyMT(P, A, F, seed=1, box_size=16):
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
-def animate(P, A, F, seed=1, box_size=16):
+def animate(P, A, seed=1, box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -71,8 +71,8 @@ def animate(P, A, F, seed=1, box_size=16):
             data_prefix (str): データファイル名のプレフィックス (例: "path/to/sim_data_test")
             save_path (str): 保存する動画ファイルのパス (例: "path/to/animation.mov")
         """
-        data_folder = f"data/P{P}_A{A}_F{F}/seed{seed}"
-        save_folder = f"animation/P{P}_A{A}_F{F}"
+        data_folder = f"data/P{P}_A{A}/seed{seed}"
+        save_folder = f"animation/P{P}_A{A}"
         save_path = f"{save_folder}/seed{seed}.mov"
 
         # 保存フォルダを作成
@@ -143,10 +143,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create animation from simulation data")
     parser.add_argument("--P", type=float, default=0.5, help="Packing fraction")
     parser.add_argument("--A", type=float, default=0.5, help="Alignment strength")
-    parser.add_argument("--F", type=float, default=0.001, help="Force")
     parser.add_argument("--seed", type=int, default=1, help="Random seed")
     
     args = parser.parse_args()
 
     # コマンドライン引数を使って関数を実行
-    animate(P=args.P, A=args.A, F=args.F, seed=args.seed)
+    animate(P=args.P, A=args.A, seed=args.seed)
