@@ -23,10 +23,10 @@ using ArgParse
     tau::Float64 = 1.18                 # 時間スケール [t]
     dt::Float64 = 0.01                   # タイムステップ
     noise_std::Float64 = 0.14          # ノイズの標準偏差 [rad]
-    k_cargo::Float64 = 1.0e-9
-    k_MT::Float64 = 4.0e-9               # 微小管の速度摩擦係数
+    k_cargo::Float64 = 1.0e-3
+    k_MT::Float64 = 4.0e-3               # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
-    epsilon::Float64 = 6.57e-10        # DNAのエネルギースケール [J]
+    epsilon::Float64 = 6.57e-4        # DNAのエネルギースケール [µJ]
 
     # --- 計算によって決まる派生パラメータ ---
     num_particles::Int
@@ -53,10 +53,10 @@ function Parameters(;
     tau::Float64 = 1.18,                 # 時間スケール
     dt::Float64 = 0.01,                   # タイムステップ
     noise_std::Float64 = 0.14,          # ノイズの標準偏差
-    k_cargo::Float64 = 1.0e-9,
-    k_MT::Float64 = 4.0e-9,               # 微小管の速度摩擦係数
+    k_cargo::Float64 = 1.0e-3,
+    k_MT::Float64 = 4.0e-3,               # 微小管の速度摩擦係数
     dna::Float64 = 0.01,                 # DNAの長さ [µm]
-    epsilon::Float64 = 6.57e-10        # DNAのエネルギースケール [J]
+    epsilon::Float64 = 6.57e-4        # DNAのエネルギースケール [µJ]
 )
     # 派生パラメータを計算する
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
