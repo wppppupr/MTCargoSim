@@ -24,9 +24,9 @@ using ArgParse
     dt::Float64 = 0.01                   # タイムステップ
     noise_std::Float64 = 0.14          # ノイズの標準偏差 [rad]
     k_cargo::Float64 = 1.0e-3
-    k_MT::Float64 = 4.0e-3               # 微小管の速度摩擦係数
+    k_MT::Float64 = 4.0e-2               # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
-    epsilon::Float64 = 6.57e-4        # DNAのエネルギースケール [µJ]
+    f::Float64 = 6.57e-4        # DNAの力 [µN]
 
     # --- 計算によって決まる派生パラメータ ---
     num_particles::Int
@@ -34,6 +34,7 @@ using ArgParse
     r_a::Float64                      # 貨物と微小管の相互作用範囲
     r_dna::Float64
     dna_l::Float64
+    epsilon::Float64 = sqrt(exp(1)/2) * r_a * f  # DNAのエネルギースケール [µJ]
 end
 
 """
@@ -54,9 +55,9 @@ function Parameters(;
     dt::Float64 = 0.01,                   # タイムステップ
     noise_std::Float64 = 0.14,          # ノイズの標準偏差
     k_cargo::Float64 = 1.0e-3,
-    k_MT::Float64 = 4.0e-3,               # 微小管の速度摩擦係数
+    k_MT::Float64 = 4.0e-2,               # 微小管の速度摩擦係数
     dna::Float64 = 0.01,                 # DNAの長さ [µm]
-    epsilon::Float64 = 6.57e-4        # DNAのエネルギースケール [µJ]
+    f::Float64 = 6.57e-4        # DNAの力 [µN]
 )
     # 派生パラメータを計算する
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
@@ -64,6 +65,7 @@ function Parameters(;
     r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
     r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / cargo_radius
     dna_l = dna / cargo_radius
+    epsilon::Float64 = sqrt(exp(1)/2) * r_a * f  # DNAのエネルギースケール [µJ]
 
     # 全てのパラメータを渡して、Parametersオブジェクトを生成して返す
     # 呼び出しをキーワード引数ではなく位置引数にして、
@@ -76,7 +78,7 @@ function Parameters(;
         num_particles,
         interaction_radius,
         r_a, r_dna,
-        dna_l
+        dna_l, f
     )
 end
 
@@ -86,7 +88,7 @@ mutable struct Datas
     cargo_positions::Matrix{Float64}    # 1 x 2
 end
 
-# スムーズな関数（既存式）
+
 function dna_force(epsilon, r, r_a)
     return -2 .* epsilon .* r .* exp.(-(r.^2)./(r_a^2)) ./r_a^2 
 end
@@ -175,6 +177,7 @@ function transport_step!(data::Datas, params::Parameters)
     k_cargo = params.k_cargo
     k_MT = params.k_MT
     epsilon = params.epsilon
+    f = params.f
 
     N = params.num_particles
     alignment_term = zeros(N)
