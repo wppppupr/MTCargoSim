@@ -231,8 +231,8 @@ function transport_step!(data::Datas, params::Parameters)
     force_cargo[2,:] += f .* dy ./ r
     
     # --- 向きの更新 ---
-    noise = randn(N) .* params.noise_std .* sqrt(tau)
-    orientations .+= alignment_term .* dt .+ noise .* dt
+    noise = randn(N) .* params.noise_std .* sqrt(tau .* dt)
+    orientations .+= alignment_term .* dt .+ noise
     orientations .= mod.(orientations, 2π)
 
     # --- 位置更新 ---
