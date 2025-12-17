@@ -22,7 +22,7 @@ using ArgParse
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18                 # 時間スケール [t]
     dt::Float64 = 0.01                   # タイムステップ
-    noise_std::Float64 = 0.455          # ノイズの標準偏差 [rad]
+    noise_std::Float64 = 0.14          # ノイズの標準偏差 [rad]
     k_cargo::Float64 = 1.0e-9
     k_MT::Float64 = 4.0e-9               # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
@@ -52,7 +52,7 @@ function Parameters(;
     box_size::Float64 = 16.0,            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18,                 # 時間スケール
     dt::Float64 = 0.01,                   # タイムステップ
-    noise_std::Float64 = 0.455,          # ノイズの標準偏差
+    noise_std::Float64 = 0.14,          # ノイズの標準偏差
     k_cargo::Float64 = 1.0e-9,
     k_MT::Float64 = 4.0e-9,               # 微小管の速度摩擦係数
     dna::Float64 = 0.01,                 # DNAの長さ [µm]
@@ -153,8 +153,8 @@ function step!(data::Datas, params::Parameters)
     end
 
     # --- 向きの更新 ---
-    noise = randn(N) .* params.noise_std .* sqrt(tau)
-    orientations .+= alignment_term .* dt .+ noise .* dt
+    noise = randn(N) .* params.noise_std .* sqrt(tau .* dt)
+    orientations .+= alignment_term .* dt .+ noise
     orientations .= mod.(orientations, 2π)
 
     # --- 位置更新 ---
