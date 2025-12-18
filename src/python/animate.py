@@ -4,7 +4,7 @@ import os
 import argparse
 from matplotlib.animation import FuncAnimation
 
-def animate_onlyMT(P, A, seed=1, box_size=16):
+def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -48,7 +48,7 @@ def animate_onlyMT(P, A, seed=1, box_size=16):
 
             quiver.set_offsets(current_positions)
             quiver.set_UVC(np.cos(current_orientations), np.sin(current_orientations))
-            ax.set_title(f"Frame: {frame + 1}/{len(positions_history)}")
+            ax.set_title(f"time: {dt*(frame + 1)}/{dt*len(positions_history)}")
             if (frame + 1) % 50 == 0:
                 print(f"  ...アニメーションフレーム {frame + 1}/{len(positions_history)} を処理中")
             return [quiver]
@@ -63,7 +63,7 @@ def animate_onlyMT(P, A, seed=1, box_size=16):
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
-def animate(P, A, seed=1, box_size=16):
+def animate(P, A, seed=1, dt=1, box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -124,7 +124,7 @@ def animate(P, A, seed=1, box_size=16):
             quiver.set_offsets(current_positions)
             quiver.set_UVC(np.cos(current_orientations), np.sin(current_orientations))
             cargo_plot.set_data(current_cargo_position[:, 0], current_cargo_position[:, 1])
-            ax.set_title(f"Frame: {frame + 1}/{len(positions_history)}")
+            ax.set_title(f"time: {dt*(frame + 1)}/{dt*len(positions_history)}")
             if (frame + 1) % 50 == 0:
                 print(f"  ...アニメーションフレーム {frame + 1}/{len(positions_history)} を処理中")
             return [quiver, cargo_plot]
@@ -148,4 +148,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # コマンドライン引数を使って関数を実行
-    animate(P=args.P, A=args.A, seed=args.seed)
+    animate(P=args.P, A=args.A, seed=args.seed, dt = 0.01)
