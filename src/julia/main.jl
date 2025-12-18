@@ -21,12 +21,12 @@ using ArgParse
     r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18                 # 時間スケール [t]
-    dt::Float64 = 0.01                   # タイムステップ
-    noise_std::Float64 = 0.14          # ノイズの標準偏差 [rad]
+    dt::Float64 = 0.01                  # タイムステップ
+    Dr_exp::Float64 = 0.0125            # 実験から得られた微小管の回転拡散 [rad/s]
     k_cargo::Float64 = 1.0e-3
-    k_MT::Float64 = 4.0e-2               # 微小管の速度摩擦係数
+    k_MT::Float64 = 4.0e-3              # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
-    f::Float64 = 6.57e-4        # DNAの力 [µN]
+    f::Float64 = 6.57e-4                # DNAの力 [µN]
 
     # --- 計算によって決まる派生パラメータ ---
     num_particles::Int
@@ -35,6 +35,7 @@ using ArgParse
     r_dna::Float64
     dna_l::Float64
     epsilon::Float64 = sqrt(exp(1)/2) * r_a * f  # DNAのエネルギースケール [µJ]
+    Dr::Float64 = tau * Dr_exp          # 無次元化した回転拡散係数
 end
 
 """
@@ -53,9 +54,9 @@ function Parameters(;
     box_size::Float64 = 16.0,            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18,                 # 時間スケール
     dt::Float64 = 0.01,                   # タイムステップ
-    noise_std::Float64 = 0.14,          # ノイズの標準偏差
+    Dr_exp::Float64 = 0.0125,          # 実験から得られた微小管の回転拡散 [rad/s]
     k_cargo::Float64 = 1.0e-3,
-    k_MT::Float64 = 4.0e-2,               # 微小管の速度摩擦係数
+    k_MT::Float64 = 4.0e-3,               # 微小管の速度摩擦係数
     dna::Float64 = 0.01,                 # DNAの長さ [µm]
     f::Float64 = 6.57e-4        # DNAの力 [µN]
 )
@@ -66,6 +67,7 @@ function Parameters(;
     r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / cargo_radius
     dna_l = dna / cargo_radius
     epsilon::Float64 = sqrt(exp(1)/2) * r_a * f  # DNAのエネルギースケール [µJ]
+    Dr::Float64 = tau * Dr_exp          # 無次元化した回転拡散係数
 
     # 全てのパラメータを渡して、Parametersオブジェクトを生成して返す
     # 呼び出しをキーワード引数ではなく位置引数にして、
@@ -73,12 +75,12 @@ function Parameters(;
     return Parameters(
         packing_fraction, A, seed,
         cargo_radius, d_MT, r_int, box_size,
-        tau, dt, noise_std, k_cargo,
-        k_MT, dna, epsilon,
+        tau, dt, Dr_exp, k_cargo,
+        k_MT, dna, f,
         num_particles,
         interaction_radius,
         r_a, r_dna,
-        dna_l, f
+        dna_l, epsilon, Dr
     )
 end
 
@@ -120,6 +122,7 @@ function step!(data::Datas, params::Parameters)
     A = params.A
     dt = params.dt
     tau = params.tau
+    Dr = params.Dr
 
     N = params.num_particles
     alignment_term = zeros(N)
@@ -155,7 +158,7 @@ function step!(data::Datas, params::Parameters)
     end
 
     # --- 向きの更新 ---
-    noise = randn(N) .* params.noise_std .* sqrt(tau .* dt)
+    noise = randn(N) .* sqrt(2 * Dr * tau .* dt)
     orientations .+= alignment_term .* dt .+ noise
     orientations .= mod.(orientations, 2π)
 
@@ -177,7 +180,7 @@ function transport_step!(data::Datas, params::Parameters)
     k_cargo = params.k_cargo
     k_MT = params.k_MT
     epsilon = params.epsilon
-    f = params.f
+    Dr = params.Dr
 
     N = params.num_particles
     alignment_term = zeros(N)
@@ -234,7 +237,7 @@ function transport_step!(data::Datas, params::Parameters)
     force_cargo[2,:] += f .* dy ./ r
     
     # --- 向きの更新 ---
-    noise = randn(N) .* params.noise_std .* sqrt(tau .* dt)
+    noise = randn(N) .* sqrt(2 * Dr * tau .* dt)
     orientations .+= alignment_term .* dt .+ noise
     orientations .= mod.(orientations, 2π)
 
