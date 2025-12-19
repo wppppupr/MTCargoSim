@@ -40,9 +40,12 @@ def ensembleS(folder):
     return S_array
 
 if __name__ == "__main__":
+
+    P=0.5
+    A=0.5
     # 実行パスはプロジェクトルートを想定して相対パスを指定
-    folder = os.path.join("data", "MT", "P0.5_A0.0")
-    save_folder = os.path.join("analysis", "data", "MT", "P0.5_A0.0")
+    folder = os.path.join("data", "MT", f"P{str(P)}_A{str(A)}")
+    save_folder = os.path.join("analysis", "data", "MT", f"P{str(P)}_A{str(A)}")
     os.makedirs(save_folder, exist_ok=True)
 
     print(f"Reading seeds from: {folder}")
