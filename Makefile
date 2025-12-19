@@ -113,7 +113,7 @@ help:
 	@echo "  make              : デフォルト設定 (P=0.5, A=0.5...) で実行"
 	@echo "  make P=0.8 A=1.0  : パラメータを指定して実行"
 	@echo "  make clean        : 生成されたデータを削除"
-	@echo "  make MT P=0.5 A=0.0 MAX_SEED=? STEPS=1000 : MTだけシミュレーション
+	@echo "  make MT P=0.5 A=0.0 MAX_SEED=? STEPS=10000 : MTだけシミュレーション
 
 MT:
 	@echo "🧪 MTだけシミュレーション... (P=$(P), A=$(A))"
