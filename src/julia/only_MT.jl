@@ -20,10 +20,6 @@ function parse_commandline()
             help = "Random seed (default: 1)"
             arg_type = Int
             default = 1
-        "--warmup", "-w"
-            help = "Warmup steps (default: 1000)"
-            arg_type = Int
-            default = 1000
         "--steps", "-n"
             help = "Number of simulation steps (default: 1000)"
             arg_type = Int
@@ -41,7 +37,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     println("  packing_fraction = $(args["packing_fraction"])")
     println("  A = $(args["A"])")
     println("  seed = $(args["seed"])")
-    println("  warmup steps = $(args["warmup"])")
     println("  simulation steps = $(args["steps"])")
     println()
 
@@ -51,7 +46,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         seed=args["seed"]
     )
     
-    final_data = run_simulation(params, args["warmup"], args["steps"])
+    final_data = MT_simulation(params, args["steps"])
 
     println("\nシミュレーション完了!")
 end

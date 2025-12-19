@@ -13,8 +13,8 @@ def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
             save_path (str): 保存する動画ファイルのパス (例: "path/to/animation.mov")
         """
 
-        data_folder = f"data/P{P}_A{A}/seed{seed}"
-        save_folder = f"animation/P{P}_A{A}"
+        data_folder = f"data/MT/P{P}_A{A}/seed{seed}"
+        save_folder = f"animation/MT/P{P}_A{A}"
         save_path = f"{save_folder}/seed{seed}.mov"
 
         # 保存フォルダを作成
@@ -29,6 +29,8 @@ def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
             return
 
         print(f"データロード完了。全 {len(positions_history)} フレームをアニメーション化します。")
+
+        round_num = np.abs(np.log10(dt))
 
         fig, ax = plt.subplots(figsize=(8, 8))
         
@@ -48,7 +50,7 @@ def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
 
             quiver.set_offsets(current_positions)
             quiver.set_UVC(np.cos(current_orientations), np.sin(current_orientations))
-            ax.set_title(f"time: {dt*(frame + 1)}/{dt*len(positions_history)}")
+            ax.set_title(f"time: {frame + 1}/{len(positions_history)}")
             if (frame + 1) % 50 == 0:
                 print(f"  ...アニメーションフレーム {frame + 1}/{len(positions_history)} を処理中")
             return [quiver]
@@ -71,8 +73,8 @@ def animate(P, A, seed=1, dt=1, box_size=16):
             data_prefix (str): データファイル名のプレフィックス (例: "path/to/sim_data_test")
             save_path (str): 保存する動画ファイルのパス (例: "path/to/animation.mov")
         """
-        data_folder = f"data/P{P}_A{A}/seed{seed}"
-        save_folder = f"animation/P{P}_A{A}"
+        data_folder = f"data/MTC/P{P}_A{A}/seed{seed}"
+        save_folder = f"animation/MTC/P{P}_A{A}"
         save_path = f"{save_folder}/seed{seed}.mov"
 
         # 保存フォルダを作成
@@ -109,6 +111,8 @@ def animate(P, A, seed=1, dt=1, box_size=16):
         # markersize (points)
         marker_size_pt = marker_diameter_inch * 72
 
+        round_num = np.abs(np.log10(dt))
+
         quiver = ax.quiver(
             initial_positions[:, 0], initial_positions[:, 1],
             np.cos(initial_orientations), np.sin(initial_orientations),
@@ -124,7 +128,7 @@ def animate(P, A, seed=1, dt=1, box_size=16):
             quiver.set_offsets(current_positions)
             quiver.set_UVC(np.cos(current_orientations), np.sin(current_orientations))
             cargo_plot.set_data(current_cargo_position[:, 0], current_cargo_position[:, 1])
-            ax.set_title(f"time: {dt*(frame + 1)}/{dt*len(positions_history)}")
+            ax.set_title(f"time: {frame + 1}/{len(positions_history)}")
             if (frame + 1) % 50 == 0:
                 print(f"  ...アニメーションフレーム {frame + 1}/{len(positions_history)} を処理中")
             return [quiver, cargo_plot]

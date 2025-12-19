@@ -5,6 +5,9 @@ SEED ?= 1
 STEPS ?= 10000
 WARMUP ?= 10000
 
+# 計算するSeedの最大値 (デフォルト: 1000)
+MAX_SEED ?= 10
+
 # --- コマンド定義 ---
 
 # --- バックアップ設定 ---
@@ -21,16 +24,17 @@ JULIA_CMD = julia --project=.
 
 # --- ファイルパスの定義 ---
 # Juliaが出力するディレクトリパス (main.jlのロジックに合わせる)
-DATA_DIR = data/P$(P)_A$(A)/seed$(SEED)
+DATA_DIR = data/MTC/P$(P)_A$(A)/seed$(SEED)
 # ターゲットとなるデータファイル
 DATA_FILE = $(DATA_DIR)/positions_history.npy
 
 # Pythonが出力する動画ファイルパス (animate.pyのロジックに合わせる)
-ANIM_DIR = animation/P$(P)_A$(A)
+ANIM_DIR = animation/MTC/P$(P)_A$(A)
 ANIM_FILE = $(ANIM_DIR)/seed$(SEED).mov
 
 # --- ソースコード ---
 JULIA_SRC = src/julia/main.jl
+MT_SRC = src/julia/only_MT.jl
 PYTHON_SRC = src/python/animate.py
 
 # --- タスク ---
@@ -97,6 +101,7 @@ save:
 	
 	@echo "✅ 全てのバックアップが完了しました！"
 
+
 # 生成物を削除
 clean:
 	rm -rf data animation
@@ -108,3 +113,11 @@ help:
 	@echo "  make              : デフォルト設定 (P=0.5, A=0.5...) で実行"
 	@echo "  make P=0.8 A=1.0  : パラメータを指定して実行"
 	@echo "  make clean        : 生成されたデータを削除"
+	@echo "  make MT P=0.5 A=0.0 MAX_SEED=? STEPS=1000 : MTだけシミュレーション
+
+MT:
+	@echo "🧪 MTだけシミュレーション... (P=$(P), A=$(A))"
+	@seq 1 $(MAX_SEED) | xargs -I{} sh -c '\
+		echo "  ... Seed {} 実行中"; \
+		$(JULIA_CMD) $(MT_SRC) --seed {} --packing_fraction $(P) --A $(A) --steps $(STEPS); \
+	'
