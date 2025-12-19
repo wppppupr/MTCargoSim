@@ -26,10 +26,10 @@ export Parameters, Datas, run_simulation, MT_simulation
     tau::Float64 = 1.18                 # 時間スケール [t]
     dt::Float64 = 0.01                  # タイムステップ
     Dr_exp::Float64 = 0.0125            # 実験から得られた微小管の回転拡散 [rad/s]
-    k_cargo::Float64 = 1.0e-3
-    k_MT::Float64 = 4.0e-3              # 微小管の速度摩擦係数
+    k_cargo::Float64 = 2.26e-2
+    k_MT::Float64 = 9.04e-2              # 微小管の速度摩擦係数
     dna::Float64 = 0.01                 # DNAの長さ [µm]
-    f::Float64 = 6.57e-4                # DNAの力 [µN]
+    f::Float64 = 1.13e-2                # DNAの力 [µN]
 
     # --- 計算によって決まる派生パラメータ ---
     num_particles::Int
@@ -58,10 +58,10 @@ function Parameters(;
     tau::Float64 = 1.18,                 # 時間スケール
     dt::Float64 = 0.01,                   # タイムステップ
     Dr_exp::Float64 = 0.0125,          # 実験から得られた微小管の回転拡散 [rad/s]
-    k_cargo::Float64 = 1.0e-3,
-    k_MT::Float64 = 4.0e-3,               # 微小管の速度摩擦係数
+    k_cargo::Float64 = 2.26e-2,
+    k_MT::Float64 = 9.04e-2,               # 微小管の速度摩擦係数
     dna::Float64 = 0.01,                 # DNAの長さ [µm]
-    f::Float64 = 6.57e-4        # DNAの力 [µN]
+    f::Float64 = 1.13e-2        # DNAの力 [µN]
 )
     # 派生パラメータを計算する
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
