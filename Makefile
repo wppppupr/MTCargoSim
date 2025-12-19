@@ -16,7 +16,7 @@ REMOTE_NAME = NAS
 BRANCH_NAME = main
 
 # NASのバックアップ先フォルダパス (末尾にスラッシュをつけない)
-NAS_PATH = "/Volumes/data/Sasaki/backup_git/MTCargoSim"
+NAS_PATH = /Volumes/data/Sasaki/backup_git/MTCargoSim
 
 # Macの標準的なpythonコマンド(venv等あれば適宜変更)
 PYTHON_CMD = python3
