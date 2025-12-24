@@ -267,7 +267,7 @@ function MT_simulation(params::Parameters, num_steps::Int;)
         orientations_history[:, step] = data.orientations
     end
 
-    folder_path = "data/MT/P$(params.packing_fraction)_A$(params.A)/seed$(params.seed)"
+    folder_path = "\\NAS-Ebanaru\\data\\Sasaki\\backup_git\\MTCargoSim\\data\\MT\\P$(params.packing_fraction)_A$(params.A)\\seed$(params.seed)"
     # ディレクトリを作成してデータを保存
     mkpath(folder_path)
 
@@ -312,7 +312,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int;)
         cargo_history[:, :, step] = data.cargo_positions
     end
 
-    folder_path = "data/MTC/P$(params.packing_fraction)_A$(params.A)/seed$(params.seed)"
+    folder_path = "\\NAS-Ebanaru\\data\\Sasaki\\backup_git\\MTCargoSim\\data\\MTC\\P$(params.packing_fraction)_A$(params.A)\\seed$(params.seed)"
     # ディレクトリを作成してデータを保存
     mkpath(folder_path)
 
