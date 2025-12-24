@@ -121,3 +121,22 @@ MT:
 		echo "  ... Seed {} 実行中"; \
 		$(JULIA_CMD) $(MT_SRC) --seed {} --packing_fraction $(P) --A $(A) --steps $(STEPS); \
 	'
+
+# --- 環境構築 (他のPC用) ---
+
+.PHONY: setup
+setup:
+	@echo "🛠️ 環境セットアップを開始します..."
+	
+	@echo "1. Python仮想環境の作成とライブラリインストール"
+	# venvフォルダがなければ作成
+	[ -d "venv" ] || python3 -m venv venv
+	# pipのアップグレードとライブラリのインストール
+	./venv/bin/pip install --upgrade pip
+	./venv/bin/pip install -r requirements.txt
+	
+	@echo "2. Juliaパッケージのインストール (Instantiate)"
+	# Project.toml/Manifest.toml に基づいてパッケージを完全再現
+	$(JULIA_CMD) -e 'using Pkg; Pkg.instantiate()'
+	
+	@echo "✅ セットアップ完了！ 'make' コマンドで実行できます。"
