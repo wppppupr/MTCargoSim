@@ -35,7 +35,7 @@ function main()
     # テスト用パラメータ
     p = 0.5
     a = 0.5
-    step = 30
+    steps = 30
     max_seed = 1 # 計算回数
 
     println("並列計算を開始します... (Target Seeds: 1 to $max_seed)")
