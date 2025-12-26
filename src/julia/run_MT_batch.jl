@@ -62,3 +62,4 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @time main()
     println("✅ 全ての並列計算が完了しました。")
 end
+# julia --project=. run_MT_batch.jl
