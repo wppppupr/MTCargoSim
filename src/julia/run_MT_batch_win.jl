@@ -88,8 +88,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     a_min = 0.0
     a_max = 0.5
     a_step = 0.1
-    max_seed = 1
-    steps = 30#0000
+    max_seed = 1000
+    steps = 300000
 
     args = ARGS
     if length(args) >= 1; a_min = parse(Float64, args[1]); end
