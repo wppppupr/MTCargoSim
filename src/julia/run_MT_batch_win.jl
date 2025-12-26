@@ -2,113 +2,95 @@ using Distributed
 using Pkg
 
 # ==============================================================================
-# 1. ワーカープロセスのセットアップ (Windows対応版)
+# 1. パスと設定の確定 (Mainプロセス)
 # ==============================================================================
-function setup_workers()
-    # 既にワーカーがいる場合は追加しない（二重起動防止）
-    if nprocs() == 1
-        # 論理コア数だけプロセスを追加（メインプロセス分を除く必要があれば調整）
-        addprocs(Sys.CPU_THREADS)
-    end
-    println("✅ ワーカー数: $(nprocs()) (Main + Workers)")
-end
-
-# 最初にワーカーを準備
-setup_workers()
-
-# ==============================================================================
-# 2. 全ワーカーへのコードと環境の配布
-# ==============================================================================
-# パス関係をメインプロセスで確定させる
-const PROJECT_ROOT = dirname(dirname(@__DIR__))  # src/julia/ の2つ上がルートと仮定
+# このファイルの場所(@__DIR__)を基準に、MTC.jlの絶対パスを作る
 const MTC_FILE_PATH = joinpath(@__DIR__, "MTC.jl")
+# プロジェクトのルートディレクトリ
+const PROJECT_ROOT = dirname(dirname(@__DIR__)) 
 
 println("📂 プロジェクトルート: $PROJECT_ROOT")
 println("📄 MTCファイルパス:   $MTC_FILE_PATH")
 
-# @everywhere ブロック：全プロセスで実行されるコード
+# まずメインプロセス(自分のPC)で読み込めるかテスト
+# ここでエラーが出れば、ファイル自体に問題があることがわかります
+println("🧪 メインプロセスでの読み込みテスト...")
+if !isfile(MTC_FILE_PATH)
+    error("❌ エラー: ファイルが見つかりません -> $MTC_FILE_PATH")
+end
+include(MTC_FILE_PATH)
+using .MTC
+println("✅ メインプロセス: MTCモジュール読み込み成功")
+
+
+# ==============================================================================
+# 2. ワーカープロセスのセットアップ
+# ==============================================================================
+if nprocs() == 1
+    println("👷 ワーカープロセスを追加中 (Core数: $(Sys.CPU_THREADS))...")
+    addprocs(Sys.CPU_THREADS)
+end
+println("⚡ 現在のワーカー数: $(nprocs())")
+
+
+# ==============================================================================
+# 3. ワーカーへの環境・コード配布 (段階的に実行)
+# ==============================================================================
+
+# ステップ1: 環境(Project.toml)のアクティベート
+println("📦 [Step 1] 全ワーカーの環境設定...")
 @everywhere begin
     using Pkg
-    
-    # 1. 環境のアクティベート
-    # $PROJECT_ROOT を使うことで、ワーカーがどこにいても正しいProject.tomlを見つける
+    # ワーカーにプロジェクトルートを教えて環境を有効化させる
     try
         Pkg.activate($PROJECT_ROOT)
     catch
-        # パス計算がずれた場合の保険（カレントディレクトリ）
-        Pkg.activate(".") 
+        Pkg.activate(".") # 保険
     end
-
-    # 2. 必要なパッケージの読み込み
-    try
-        using NPZ
-        using LinearAlgebra
-        using Distributions
-    catch e
-        @error "パッケージの読み込みに失敗しました。'julia --project=. ...' で実行していますか？" exception=e
-    end
-
-    # 3. MTC.jl の読み込み
-    # モジュールファイルが見つかるかチェック
-    if !isfile($MTC_FILE_PATH)
-        error("致命的エラー: MTC.jl が見つかりません -> $($MTC_FILE_PATH)")
-    end
-
-    include($MTC_FILE_PATH)
-    
-    # モジュール名は 'MTC.jl' の中身に合わせて 'MTC' とする
-    using .MTC
 end
 
-# 読み込み確認（診断用）
-function check_workers()
-    println("🔍 ワーカーの読み込み状況チェック...")
-    responses = pmap(w -> myid(), workers())
-    println("  -> 全ワーカー($(length(responses))機) が正常に応答しました。")
-end
+# ステップ2: ファイルの読み込み (include)
+println("📂 [Step 2] 全ワーカーで MTC.jl を読み込み...")
+@everywhere include($MTC_FILE_PATH)
 
-check_workers()
+# ステップ3: モジュールの使用宣言 (using)
+# includeと分けることで、確実に読み込み後に実行させる
+println("🔗 [Step 3] 全ワーカーで using .MTC を実行...")
+@everywhere using .MTC
+@everywhere using NPZ
+
 
 # ==============================================================================
-# 3. シミュレーション実行ロジック
+# 4. シミュレーション実行ロジック
 # ==============================================================================
 function run_parameter_sweep(p::Float64, a::Float64; steps::Int=300000, max_seed::Int=1000)
     println("🚀 計算開始: P=$(p), A=$(a), Seeds=1:$(max_seed)")
 
-    # pmap: 空いているワーカーにタスクを自動配分
     pmap(1:max_seed) do seed
-        
-        # --- ここは各ワーカーで実行される ---
-        
-        # 【重要修正】
-        # Parameters構造体には 'steps' は含まれていません。
-        # steps は MT_simulation 関数に直接渡します。
+        # 各ワーカーでの処理
+        # MTCモジュールが読み込まれている前提で実行
         params = MTC.Parameters(
             packing_fraction = p,
             A = a,
             seed = seed
         )
         
-        # シミュレーション実行
         MTC.MT_simulation(params, steps)
-        
         return nothing
     end
 end
 
 # ==============================================================================
-# 4. メイン実行部
+# 5. メイン実行部
 # ==============================================================================
 if abspath(PROGRAM_FILE) == @__FILE__
-    # --- コマンドライン引数の処理 ---
-    # デフォルト値
+    # コマンドライン引数処理
     a_min = 0.0
     a_max = 0.5
-    a_step = 0.1 # テスト用に少し粗くしています
-    max_seed = 10 # テスト用に少なくしています
+    a_step = 0.1
+    max_seed = 10
     steps = 300000
 
-    # 引数があれば上書き (順序: min max step seed steps)
     args = ARGS
     if length(args) >= 1; a_min = parse(Float64, args[1]); end
     if length(args) >= 2; a_max = parse(Float64, args[2]); end
@@ -116,10 +98,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     if length(args) >= 4; max_seed = parse(Int, args[4]); end
     if length(args) >= 5; steps = parse(Int, args[5]); end
 
-    # 計算対象のAのリスト
     a_values = collect(a_min:a_step:a_max)
     
-    # 実行ループ
     for a in a_values
         @time run_parameter_sweep(0.5, a; steps=steps, max_seed=max_seed)
     end
