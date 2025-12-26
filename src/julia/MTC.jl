@@ -250,44 +250,6 @@ function transport_step!(data::Datas, params::Parameters)
     cargo_positions .+= (tau/k_cargo).* reshape(sum(force_cargo, dims=2), 1, 2) .* dt
 end
 
-"""
-function MT_simulation(params::Parameters, num_steps::Int;)
-    data = initialize(params)
-
-    # ★★★ 修正点: 履歴を保存するための配列を初期化 ★★★
-    positions_history = Array{Float64, 3}(undef, 2, params.num_particles, num_steps)
-    orientations_history = Array{Float64, 2}(undef, params.num_particles, num_steps)
-
-    println("メインシミュレーションを実行中...")
-    @showprogress for step in 1:num_steps
-        step!(data, params)
-        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size)
-
-        # ★★★ 修正点: 各ステップのデータを履歴に保存 ★★★
-        positions_history[:, :, step] = data.positions
-        orientations_history[:, step] = data.orientations
-    end
-
-    folder_path = "\\\\NAS-Ebanaru\\data\\Sasaki\\backup_git\\MTCargoSim\\data\\MT\\P$(params.packing_fraction)_A$(params.A)\\seed$(params.seed)"
-    # ディレクトリを作成してデータを保存
-    mkpath(folder_path)
-
-    # パラメータを保存(.txt形式)
-    open("$(folder_path)/parameters.txt", "w") do io
-        for field in fieldnames(Parameters)
-            value = getfield(params, field)
-            println(io, "$field = $value")
-        end
-    end
-
-    # Python (numpy)との互換性のために次元を入れ替えて保存
-    npzwrite("$(folder_path)/positions_history.npy", permutedims(positions_history, (3, 2, 1)))
-    npzwrite("$(folder_path)/orientations_history.npy", orientations_history')
-    println("時系列データの保存が完了しました。")
-
-    return data
-end
-"""
 
 function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100)
     data = initialize(params)
@@ -346,6 +308,8 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
 
     return data
 end
+
+
 
 function run_simulation(params::Parameters, warmup::Int,  num_steps::Int;)
     data = initialize(params)
