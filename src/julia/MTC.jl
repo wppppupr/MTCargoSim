@@ -250,6 +250,7 @@ function transport_step!(data::Datas, params::Parameters)
     cargo_positions .+= (tau/k_cargo).* reshape(sum(force_cargo, dims=2), 1, 2) .* dt
 end
 
+"""
 function MT_simulation(params::Parameters, num_steps::Int;)
     data = initialize(params)
 
@@ -283,6 +284,65 @@ function MT_simulation(params::Parameters, num_steps::Int;)
     npzwrite("$(folder_path)/positions_history.npy", permutedims(positions_history, (3, 2, 1)))
     npzwrite("$(folder_path)/orientations_history.npy", orientations_history')
     println("時系列データの保存が完了しました。")
+
+    return data
+end
+"""
+
+function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100)
+    data = initialize(params)
+
+    # --- 修正: 保存用配列のサイズを小さくする ---
+    # num_steps 全部ではなく、save_interval で割った回数分だけ確保
+    num_saved_steps = div(num_steps, save_interval)
+    
+    positions_history = Array{Float64, 3}(undef, 2, params.num_particles, num_saved_steps)
+    orientations_history = Array{Float64, 2}(undef, params.num_particles, num_saved_steps)
+
+    println("メインシミュレーションを実行中... (全 $num_steps ステップ, 保存間隔 $save_interval)")
+    
+    # 保存用カウンタ
+    save_idx = 1
+    
+    # プログレスバー
+    p = Progress(num_steps)
+
+    for step in 1:num_steps
+        step!(data, params)
+        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size)
+
+        # --- 修正: 指定した間隔のときだけ保存 ---
+        if step % save_interval == 0
+            if save_idx <= num_saved_steps
+                positions_history[:, :, save_idx] = data.positions
+                orientations_history[:, save_idx] = data.orientations
+                save_idx += 1
+            end
+        end
+        
+        next!(p)
+    end
+
+    # --- 保存パスの作成 (ローカル保存推奨) ---
+    # NASへの直接保存は遅い＆エラーの原因になるため、まずは "data/..." に保存
+    folder_path = "\\\\NAS-Ebanaru\\data\\Sasaki\\backup_git\\MTCargoSim\\data\\MT\\P$(params.packing_fraction)_A$(params.A)\\seed$(params.seed)"
+    mkpath(folder_path)
+
+    # パラメータ保存
+    open(joinpath(folder_path, "parameters.txt"), "w") do io
+        for field in fieldnames(Parameters)
+            value = getfield(params, field)
+            println(io, "$field = $value")
+        end
+        println(io, "num_steps = $num_steps")
+        println(io, "save_interval = $save_interval")
+    end
+
+    # データ保存 (.npy)
+    npzwrite(joinpath(folder_path, "positions_history.npy"), permutedims(positions_history, (3, 2, 1)))
+    npzwrite(joinpath(folder_path, "orientations_history.npy"), orientations_history')
+    
+    println("保存完了: $folder_path")
 
     return data
 end
