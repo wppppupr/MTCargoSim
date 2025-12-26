@@ -37,7 +37,7 @@ function main()
     a = 0.5
     
     # ★修正2: 変数名を定義 (steps ではなく sim_steps としています)
-    sim_steps = 300000
+    sim_steps = 30#0000
     
     max_seed = 1000 
 
