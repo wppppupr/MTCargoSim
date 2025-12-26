@@ -76,6 +76,9 @@ function run_parameter_sweep(p::Float64, a::Float64; steps::Int=300000, max_seed
         )
         
         MTC.MT_simulation(params, steps)
+
+        Gc.gc()
+
         return nothing
     end
 end
@@ -88,7 +91,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     a_min = 0.0
     a_max = 0.5
     a_step = 0.1
-    max_seed = 1000
+    max_seed = 100
     steps = 300000
 
     args = ARGS
