@@ -19,7 +19,7 @@ println("現在のワーカー数: $(nprocs())")
         error("ファイルが見つかりません: $core_path")
     end
     include(core_path)
-    using .onlyMT
+    using .MTC
     # NPZ が必要なら有効化 (存在しない環境だとエラーになるので任意)
     try
         using NPZ
