@@ -22,7 +22,7 @@ const SAVE_INT = 10
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
 for A in 0.0:0.1:1.0
-    for seed in 1:2
+    for seed in 3:10
         push!(ALL_TASKS, (A, seed))
     end
 end
