@@ -15,13 +15,12 @@ worker_script = joinpath("src", "julia", "run_worker.jl")
 for i in 1:NUM_WORKERS
     println("  -> Worker $i を起動中...")
     
-    # run(..., wait=false) でバックグラウンド実行します
-    # open_new_console=true (Windowsのみ) をつけると、
-    # 別の黒い画面がたくさん出てきて、それぞれの進捗が見えます（カッコいいです）
-    cmd = `julia --project=. $worker_script $i $NUM_WORKERS`
+    # 1. "cmd /c start" を使って、新しいウィンドウでJuliaを起動するコマンドを作る
+    #    "Worker $i" はウィンドウのタイトルになります
+    cmd = `cmd /c start "Worker $i" julia --project=. $worker_script $i $NUM_WORKERS`
     
-    # Windowsで別窓を開くオプション (進捗が見えるように)
-    run(Cmd(cmd, windows_verbatim=true, dir=pwd()), wait=false, open_new_console=true)
+    # 2. 実行する
+    run(cmd, wait=false)
 end
 
 println("🎉 全プロセスの起動指令を出しました！")
