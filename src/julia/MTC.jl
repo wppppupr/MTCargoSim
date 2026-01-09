@@ -14,13 +14,13 @@ export Parameters, Datas, run_simulation, MT_simulation
 # ----------------------------------------------------------------
 # MT_simulation 関数の修正
 # ----------------------------------------------------------------
-function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100)
+function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100, base_path = "E:\\Sasaki\\MTCargoSim\\MT")
     # ... (初期化やループ処理は変更なし) ...
     # ... (前回の回答でのメモリ対策/間引きロジックはそのまま維持してください) ...
 
     # --- 保存パスの作成 ---
     # NASパスの修正 (前回の議論に基づき joinpath 推奨)
-    base_path = "E:\\Sasaki\\MTCargoSim\\MT"
+
     folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)", "seed$(params.seed).zarr") 
     # ★ .zarr という拡張子(フォルダ名)にすると分かりやすいです
     
@@ -64,7 +64,7 @@ end
 # ----------------------------------------------------------------
 # run_simulation 関数の修正
 # ----------------------------------------------------------------
-function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_interval::Int=100)
+function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_interval::Int=100, base_path = "E:\\Sasaki\\MTCargoSim\\MT")
     # ... (初期化処理などはそのまま) ...
 
     # ★ 注意: 元コードの 36行目に `saved_idx` というタイポがあったので `save_idx` に直しています
@@ -73,7 +73,6 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
     # ... (ループ処理) ...
 
     # --- 保存パス ---
-    base_path = "E:\\Sasaki\\MTCargoSim\\MT"
     folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)", "seed$(params.seed).zarr")
     mkpath(folder_path)
 
