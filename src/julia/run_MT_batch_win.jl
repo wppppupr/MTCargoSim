@@ -57,7 +57,7 @@ println("📂 [Step 2] 全ワーカーで MTC.jl を読み込み...")
 # includeと分けることで、確実に読み込み後に実行させる
 println("🔗 [Step 3] 全ワーカーで using .MTC を実行...")
 @everywhere using .MTC
-@everywhere using NPZ
+@everywhere using Zarr  # MTC.jl内でZarrを使うため
 
 
 # ==============================================================================
@@ -89,7 +89,7 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     # コマンドライン引数処理
     a_min = 0.0
-    a_max = 0.5
+    a_max = 1.0
     a_step = 0.1
     max_seed = 100
     steps = 300000

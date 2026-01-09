@@ -20,7 +20,7 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
 
     # --- 保存パスの作成 ---
     # NASパスの修正 (前回の議論に基づき joinpath 推奨)
-    base_path = "\\\\NAS-Ebanaru\\data\\Sasaki\\backup_git\\MTCargoSim\\data\\MT"
+    base_path = "E:\\Sasaki\\MTCargoSim\\MT"
     folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)", "seed$(params.seed).zarr") 
     # ★ .zarr という拡張子(フォルダ名)にすると分かりやすいです
     
@@ -73,7 +73,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
     # ... (ループ処理) ...
 
     # --- 保存パス ---
-    base_path = "\\\\NAS-Ebanaru\\data\\Sasaki\\backup_git\\MTCargoSim\\data\\MTC"
+    base_path = "E:\\Sasaki\\MTCargoSim\\MT"
     folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)", "seed$(params.seed).zarr")
     mkpath(folder_path)
 
