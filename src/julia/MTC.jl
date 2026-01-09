@@ -17,6 +17,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     # --- ユーザーが指定する基本パラメータ ---
     packing_fraction::Float64           # 密度 (必須)
     A::Float64                          # 整列相互作用の強さ (必須)
+    dt::Float64                  # タイムステップ
     seed::Int                           # 乱数シード
     
     # --- デフォルト値を持つ基本パラメータ ---
@@ -25,7 +26,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18                 # 時間スケール [t]
-    dt::Float64 = 0.01                  # タイムステップ
+
     Dr_exp::Float64 = 0.0125            # 実験から得られた微小管の回転拡散 [rad/s]
     k_cargo::Float64 = 2.26e-2
     k_MT::Float64 = 9.04e-2             # 微小管の速度摩擦係数
@@ -48,6 +49,7 @@ Parametersオブジェクトを生成するための外部コンストラクタ�
 function Parameters(;
     packing_fraction::Float64,
     A::Float64,
+    dt::Float64,
     seed::Int,
     
     # オプション引数
@@ -56,7 +58,6 @@ function Parameters(;
     r_int::Float64 = 0.1,
     box_size::Float64 = 16.0,
     tau::Float64 = 1.18,
-    dt::Float64 = 0.01,
     Dr_exp::Float64 = 0.0125,
     k_cargo::Float64 = 2.26e-2,
     k_MT::Float64 = 9.04e-2,
@@ -73,9 +74,9 @@ function Parameters(;
     Dr = tau * Dr_exp
 
     return Parameters(
-        packing_fraction, A, seed,
+        packing_fraction, A, dt, seed,
         cargo_radius, d_MT, r_int, box_size,
-        tau, dt, Dr_exp, k_cargo,
+        tau, Dr_exp, k_cargo,
         k_MT, dna, f,
         num_particles,
         interaction_radius,

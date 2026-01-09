@@ -15,14 +15,14 @@ include(joinpath(@__DIR__, "MTC.jl"))
 using .MTC
 
 # --- 設定 ---
-const STEPS = 300000
-const SAVE_INT = 100
+const STEPS = 30000
+const SAVE_INT = 10
 
 # 全タスクリストを作成 (A: 0.0~1.0, Seed: 1~10)
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
 for A in 0.0:0.1:1.0
-    for seed in 1:10
+    for seed in 1:2
         push!(ALL_TASKS, (A, seed))
     end
 end
@@ -53,6 +53,7 @@ function main()
                 params = MTC.Parameters(
                     packing_fraction = 0.5,
                     A = A,
+                    dt = 0.1,
                     seed = seed
                 )
                 
