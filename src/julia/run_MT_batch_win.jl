@@ -8,6 +8,9 @@ using Pkg
 const CURRENT_DIR = @__DIR__
 const MTC_PATH = joinpath(CURRENT_DIR, "MTC.jl")
 const PROJECT_ROOT = dirname(dirname(CURRENT_DIR)) # src/julia の2つ上 (sim-project/)
+const CURRENT_ENV_PATH = Base.active_project()
+
+println("🌍 環境ファイル: $CURRENT_ENV_PATH")
 
 println("📂 作業ディレクトリ: $CURRENT_DIR")
 println("📄 MTCファイル:     $MTC_PATH")
@@ -49,10 +52,10 @@ println("📦 全ワーカーに環境とコードを配布中...")
     using Pkg
     using Distributed
     
-    # ワーカーにもプロジェクト環境を強制
-    try
-        Pkg.activate($PROJECT_ROOT)
-    catch
+    # ワーカーに「これと全く同じ環境を使え」と命令
+    if isfile($CURRENT_ENV_PATH)
+        Pkg.activate($CURRENT_ENV_PATH)
+    else
         Pkg.activate(".")
     end
     
