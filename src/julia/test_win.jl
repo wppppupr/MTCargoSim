@@ -7,7 +7,7 @@ Pkg.activate(".")
 include("MTC.jl")
 using .MTC
 
-println("🍎 Mac用テストを開始します...")
+println("win 用テストを開始します...")
 
 # 1. パラメータの設定 (軽く動かすための設定)
 params = Parameters(
