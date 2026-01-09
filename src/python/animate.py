@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import argparse
+import zarr
 from matplotlib.animation import FuncAnimation
 
 def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
@@ -22,8 +23,8 @@ def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
 
         print(f"データ '{data_folder}/*.npy' をロード中...")
         try:
-            positions_history = np.load(f"{data_folder}/positions_history.npy")
-            orientations_history = np.load(f"{data_folder}/orientations_history.npy")
+            positions_history = zarr.open_array(f"{data_folder}/positions_history.npy")
+            orientations_history = zarr.open_array(f"{data_folder}/orientations_history.npy")
         except FileNotFoundError:
             print(f"エラー: データファイルが見つかりません。プレフィックス '{data_folder}' が正しいか確認してください。")
             return
@@ -82,9 +83,9 @@ def animate(P, A, seed=1, dt=1, box_size=16):
 
         print(f"データ '{data_folder}/*.npy' をロード中...")
         try:
-            positions_history = np.load(f"{data_folder}/positions_history.npy")
-            orientations_history = np.load(f"{data_folder}/orientations_history.npy")
-            cargo_history = np.load(f"{data_folder}/cargo_history.npy")
+            positions_history = zarr.open_array(f"{data_folder}/positions_history.npy")
+            orientations_history = zarr.open_array(f"{data_folder}/orientations_history.npy")
+            cargo_history = zarr.open_array(f"{data_folder}/cargo_history.npy")
         except FileNotFoundError:
             print(f"エラー: データファイルが見つかりません。プレフィックス '{data_folder}' が正しいか確認してください。")
             return
