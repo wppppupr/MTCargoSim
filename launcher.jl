@@ -21,7 +21,7 @@ for i in 1:NUM_WORKERS
     cmd = `julia --project=. $worker_script $i $NUM_WORKERS`
     
     # Windowsで別窓を開くオプション (進捗が見えるように)
-    run(Cmd(cmd, windows_verbatim=true, dir=pwd()), wait=false)
+    run(Cmd(cmd, windows_verbatim=true, dir=pwd()), wait=false, open_new_console=true)
 end
 
 println("🎉 全プロセスの起動指令を出しました！")
