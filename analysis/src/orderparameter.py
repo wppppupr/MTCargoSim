@@ -3,18 +3,13 @@ import glob
 import os
 
 def orderparameter(orientation):
-    vec = np.array([np.cos(orientation), np.sin(orientation)])
-    cos = vec[0, :, :]
-    sin = vec[1, :, :]
+    cos = np.cos(orientation)
+    sin = np.sin(orientation)
 
-    cosS = np.sum(vec[0, :, :], axis=1)
-    sinS = np.sum(vec[1, :, :], axis=1)
+    cos2 = 2 * cos**2 - 1
+    sin2 = 2 * sin * cos
 
-    mean = np.arctan2(sinS, cosS)
-
-    cosdtheta = cos * np.cos(mean)[:, None] + sin * np.sin(mean)[:, None]
-    cos2_Em = np.mean(cosdtheta**2, axis=1)
-    S = 2*(cos2_Em - 1/2)
+    S = np.sqrt(np.mean(cos2, axis=1)**2 + np.mean(sin2, axis=1)**2)
 
     return S
 
