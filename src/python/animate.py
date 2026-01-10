@@ -5,7 +5,7 @@ import argparse
 import zarr
 from matplotlib.animation import FuncAnimation
 
-def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
+def animate_onlyMT(data_folder, save_path = f"animation/MT", box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -14,24 +14,21 @@ def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
             save_path (str): 保存する動画ファイルのパス (例: "path/to/animation.mov")
         """
 
-        data_folder = f"data/MT/P{P}_A{A}/seed{seed}"
-        save_folder = f"animation/MT/P{P}_A{A}"
-        save_path = f"{save_folder}/seed{seed}.mov"
 
         # 保存フォルダを作成
-        os.makedirs(save_folder, exist_ok=True)
+        os.makedirs(save_path, exist_ok=True)
 
-        print(f"データ '{data_folder}/*.npy' をロード中...")
+        print(f"データ '{data_folder}' をロード中...")
         try:
-            positions_history = zarr.open_array(f"{data_folder}/positions_history.npy")
-            orientations_history = zarr.open_array(f"{data_folder}/orientations_history.npy")
+            positions_history = zarr.open_array(f"{data_folder}/positions", mode='r')
+            orientations_history = zarr.open_array(f"{data_folder}/orientations", mode='r')
+            positions_history = positions_history[:].T
+            orientations_history = orientations_history[:].T
         except FileNotFoundError:
             print(f"エラー: データファイルが見つかりません。プレフィックス '{data_folder}' が正しいか確認してください。")
             return
 
         print(f"データロード完了。全 {len(positions_history)} フレームをアニメーション化します。")
-
-        round_num = np.abs(np.log10(dt))
 
         fig, ax = plt.subplots(figsize=(8, 8))
         
@@ -62,11 +59,11 @@ def animate_onlyMT(P, A, seed=1, dt = 1, box_size=16):
         
         print(f"アニメーションを '{save_path}' に保存しています...")
         ani = FuncAnimation(fig, update, frames=len(positions_history), blit=True, interval=50)
-        ani.save(save_path, writer='ffmpeg', fps=20, dpi=150)
+        ani.save(f"{save_path}/animation.mov", writer='ffmpeg', fps=10, dpi=100)
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
-def animate(P, A, seed=1, dt=1, box_size=16):
+def animate(data_folder, save_path = f"animation/MT", box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -74,18 +71,18 @@ def animate(P, A, seed=1, dt=1, box_size=16):
             data_prefix (str): データファイル名のプレフィックス (例: "path/to/sim_data_test")
             save_path (str): 保存する動画ファイルのパス (例: "path/to/animation.mov")
         """
-        data_folder = f"data/MTC/P{P}_A{A}/seed{seed}"
-        save_folder = f"animation/MTC/P{P}_A{A}"
-        save_path = f"{save_folder}/seed{seed}.mov"
 
         # 保存フォルダを作成
-        os.makedirs(save_folder, exist_ok=True)
+        os.makedirs(save_path, exist_ok=True)
 
         print(f"データ '{data_folder}/*.npy' をロード中...")
         try:
-            positions_history = zarr.open_array(f"{data_folder}/positions_history.npy")
-            orientations_history = zarr.open_array(f"{data_folder}/orientations_history.npy")
-            cargo_history = zarr.open_array(f"{data_folder}/cargo_history.npy")
+            cargo_history = zarr.open_array(f"{data_folder}/cargo", mode='r')
+            positions_history = zarr.open_array(f"{data_folder}/positions", mode='r')
+            orientations_history = zarr.open_array(f"{data_folder}/orientations", mode='r')
+            cargo_history = cargo_history[:].T
+            positions_history = positions_history[:].T
+            orientations_history = orientations_history[:].T
         except FileNotFoundError:
             print(f"エラー: データファイルが見つかりません。プレフィックス '{data_folder}' が正しいか確認してください。")
             return
@@ -112,7 +109,6 @@ def animate(P, A, seed=1, dt=1, box_size=16):
         # markersize (points)
         marker_size_pt = marker_diameter_inch * 72
 
-        round_num = np.abs(np.log10(dt))
 
         quiver = ax.quiver(
             initial_positions[:, 0], initial_positions[:, 1],
@@ -140,17 +136,11 @@ def animate(P, A, seed=1, dt=1, box_size=16):
         
         print(f"アニメーションを '{save_path}' に保存しています...")
         ani = FuncAnimation(fig, update, frames=len(positions_history), blit=True, interval=0.1)
-        ani.save(save_path, writer='ffmpeg', fps=200, dpi=150)
+        ani.save(f"{save_path}/animation.mov", writer='ffmpeg', fps=10, dpi=100)
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Create animation from simulation data")
-    parser.add_argument("--P", type=float, default=0.5, help="Packing fraction")
-    parser.add_argument("--A", type=float, default=0.5, help="Alignment strength")
-    parser.add_argument("--seed", type=int, default=1, help="Random seed")
-    
-    args = parser.parse_args()
-
-    # コマンドライン引数を使って関数を実行
-    animate(P=args.P, A=args.A, seed=args.seed, dt = 0.01)
+    data = "/Users/sasakinozomu/code/MTCargoSim/src/julia/test_data/P0.1_A0.5/seed999.zarr"
+    save_path = "/Users/sasakinozomu/code/MTCargoSim/src/julia/test_data/P0.1_A0.5/seed999.zarr"
+    animate(data, save_path=save_path)

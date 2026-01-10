@@ -11,8 +11,9 @@ println("🍎 Mac用テストを開始します...")
 
 # 1. パラメータの設定 (軽く動かすための設定)
 params = Parameters(
-    packing_fraction = 0.5,
+    packing_fraction = 0.1,
     A = 0.5,
+    dt = 0.1,
     seed = 999
 )
 
