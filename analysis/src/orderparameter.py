@@ -2,7 +2,8 @@ import numpy as np
 import glob
 import os
 
-def orderparameter(orientation):
+def orderparameter(data):
+    orientation = data[:].T
     cos = np.cos(orientation)
     sin = np.sin(orientation)
 
