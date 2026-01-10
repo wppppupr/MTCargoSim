@@ -15,12 +15,12 @@ include(joinpath(@__DIR__, "MTC.jl"))
 using .MTC
 
 # --- 設定 ---
-const WARMUP = 1500
-const STEPS = 100000
+const WARMUP = 150
+const STEPS = 100
 const SAVE_INT = 10
 const A = 0.5
 const start_seed = 1
-const end_seed = 100  
+const end_seed = 2  
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
@@ -47,16 +47,16 @@ function main()
     # 自分の担当分だけループする
     # index が my_id, my_id + total, my_id + 2*total ... のものだけ実行
     count = 0
-    for (i, (A, seed)) in enumerate(ALL_TASKS)
+    for (i, seed) in enumerate(ALL_TASKS)
         # 割り当て判定 (モジュロ演算)
         if (i - 1) % total_workers == (my_id - 1)
-            println("  👉 [Worker $my_id] 実行中: A=$A, Seed=$seed")
+            println("  👉 [Worker $my_id] 実行中: Seed=$seed")
             
             try
                 params = MTC.Parameters(
                     packing_fraction = 0.5,
                     A = A,
-                    dt = 0.1,
+                    dt = 0.01,
                     seed = seed
                 )
 

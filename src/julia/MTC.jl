@@ -26,7 +26,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
     tau::Float64 = 1.18                 # 時間スケール [t]
-
+    warmup_dt::Float64 = 0.1            # ウォームアップステップのタイムステップ
     Dr_exp::Float64 = 0.0125            # 実験から得られた微小管の回転拡散 [rad/s]
     k_cargo::Float64 = 2.26e-2
     k_MT::Float64 = 9.04e-2             # 微小管の速度摩擦係数
@@ -58,6 +58,7 @@ function Parameters(;
     r_int::Float64 = 0.1,
     box_size::Float64 = 16.0,
     tau::Float64 = 1.18,
+    warmup_dt::Float64 = 0.1,
     Dr_exp::Float64 = 0.0125,
     k_cargo::Float64 = 2.26e-2,
     k_MT::Float64 = 9.04e-2,
@@ -76,7 +77,7 @@ function Parameters(;
     return Parameters(
         packing_fraction, A, dt, seed,
         cargo_radius, d_MT, r_int, box_size,
-        tau, Dr_exp, k_cargo,
+        tau, warmup_dt, Dr_exp, k_cargo,
         k_MT, dna, f,
         num_particles,
         interaction_radius,
@@ -121,7 +122,7 @@ function step!(data::Datas, params::Parameters)
     box_size = params.box_size
     r_cut = params.interaction_radius
     A = params.A
-    dt = params.dt
+    dt = params.warmup_dt
     tau = params.tau
     Dr = params.Dr
     N = params.num_particles
@@ -306,7 +307,7 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
     return nothing
 end
 
-function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_interval::Int=100, base_path = "E:\\Sasaki\\MTCargoSim\\MT")
+function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_interval::Int=100, base_path = "E:\\Sasaki\\MTCargoSim\\MTC")
     data = initialize(params)
     num_saved_steps = div(num_steps, save_interval)
 
