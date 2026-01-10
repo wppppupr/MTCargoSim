@@ -15,16 +15,19 @@ include(joinpath(@__DIR__, "MTC.jl"))
 using .MTC
 
 # --- 設定 ---
-const STEPS = 30000
+const WARMUP = 1500
+const STEPS = 100000
 const SAVE_INT = 10
+const A = 0.5
+const start_seed = 1
+const end_seed = 100  
 
-# 全タスクリストを作成 (A: 0.0~1.0, Seed: 1~10)
+# 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
-for A in 0.0:0.1:1.0
-    for seed in 3:10
-        push!(ALL_TASKS, (A, seed))
-    end
+
+for seed in start_seed:end_seed
+    push!(ALL_TASKS, seed)
 end
 
 # --- メイン処理 ---
@@ -56,9 +59,9 @@ function main()
                     dt = 0.1,
                     seed = seed
                 )
-                
-                MTC.MT_simulation(params, STEPS; save_interval = SAVE_INT)
-                
+
+                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT)
+
                 # メモリ解放
                 GC.gc()
                 count += 1
