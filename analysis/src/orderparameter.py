@@ -14,6 +14,14 @@ def orderparameter(orientation):
 
     return S
 
+def polarorderparameter(orientation):
+    cos = np.cos(orientation)
+    sin = np.sin(orientation)
+
+    S = np.sqrt(np.mean(cos, axis=1)**2 + np.mean(sin, axis=1)**2)
+
+    return S
+
 def ensembleS(folder):
     files = sorted(glob.glob(os.path.join(folder, "seed*.zarr")))
 
