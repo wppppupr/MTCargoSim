@@ -55,8 +55,8 @@ if __name__ == "__main__":
         print(f"calculate {f}")
         data = zarr.open_array(os.path.join(f, "orientations"), mode='r')
         orientations = data[:].T
-        S = orderparameter(orientations)
-        zarr.save(os.path.join(f, "order_param.zarr"), S)
+        S = polarorderparameter(orientations)
+        zarr.save(os.path.join(f, "polar_order_param.zarr"), S)
         print(f"    Order parameter S shape: {S.shape}")
 
     print("complete!")
