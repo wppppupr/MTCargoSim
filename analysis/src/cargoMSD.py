@@ -8,10 +8,10 @@ import os
 # =============================================================================
 # 解析したいZarrデータのパス (Windowsのパス形式に対応)
 # 文字列の前に r を付けると \ をそのまま扱えます
-TARGET_PATH = r"data/MTC/P0.5_A0.5/seed1.zarr"
+TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5'
 
 # 保存するグラフのファイル名
-OUTPUT_PLOT = "cargo_msd.png"
+OUTPUT_PLOT = "analysis/data/cargo_msd.png"
 
 # =============================================================================
 # 関数定義
@@ -42,14 +42,11 @@ def cargo_msd(zarr_path):
     """
     # 1. データ読み込み
     # mode='r' で読み取り専用モード
-    store = zarr.open_group(zarr_path, mode='r')
-    
-    if 'cargo' not in store:
-        raise FileNotFoundError(f"'cargo' array not found in {zarr_path}")
+    cargo = zarr.open_array(f"{zarr_path}/cargo", mode='r')
 
     # 配列としてメモリにロード (Time, N_cargo, 2)
     # 形状: [時間, 粒子数, 座標(xy)]
-    cargo_pos = store['cargo'][:]
+    cargo_pos = cargo[:].T
     
     num_steps, num_particles, dims = cargo_pos.shape
     print(f"📄 Data loaded: {num_steps} steps, {num_particles} cargo(s)")
@@ -82,11 +79,36 @@ def cargo_msd(zarr_path):
     # (r(t) - r(0))^2
     # 今回は r(0) を 0 に基準化しているので、単に二乗するだけ
     sq_displacement = np.sum(unwrapped_trajectory**2, axis=2) # x^2 + y^2
+    sq_displacement = sq_displacement.reshape(-1)  # 形状: (Time, N_cargo)
     
     # 粒子方向の平均をとる (cargoが複数ある場合)
     #msd = np.mean(sq_displacement, axis=1)
 
     return sq_displacement
+
+def plot_msd(msd_data, output_path):
+    """
+    MSDデータをプロットして保存する関数
+    """
+    plt.figure(figsize=(8,6))
+    time_steps = np.arange(msd_data.shape[0])
+    
+    # 各cargoのMSDを個別にプロット
+    for i in range(msd_data.shape[1]):
+        plt.plot(time_steps, msd_data[:, i], alpha=0.3)
+    
+    # 全cargoの平均MSDを太線でプロット
+    mean_msd = np.mean(msd_data, axis=1)
+    plt.plot(time_steps, mean_msd, color='black', linewidth=2, label='Mean MSD')
+    
+    plt.xlabel("Time Steps")
+    plt.ylabel("Mean Squared Displacement (MSD)")
+    plt.title("Cargo Mean Squared Displacement Over Time")
+    plt.legend()
+    plt.grid()
+    plt.savefig(output_path)
+    plt.close()
+    print(f"📊 Plot saved to: {output_path}")
 
 # =============================================================================
 # メイン処理
@@ -95,45 +117,23 @@ def cargo_msd(zarr_path):
 if __name__ == "__main__":
     try:
         print(f"🚀 Analyzing: {TARGET_PATH}")
-        msd_data = cargo_msd(TARGET_PATH)
-        
-        # 時間軸 (ステップ数)
-        time_steps = np.arange(len(msd_data))
+        msds = []
+        for seed in range(1, 96):
+            seed_path = os.path.join(TARGET_PATH, f"seed{seed}.zarr")
+            if os.path.exists(seed_path):
+                msd_data = cargo_msd(seed_path)
+                msds.append(msd_data)
+                print(f"    ✅ Seed {seed}: MSD shape {msd_data.shape}")
 
-        # --- プロット ---
-        plt.figure(figsize=(8, 6))
-        
-        # 両対数プロット
-        plt.loglog(time_steps, msd_data, label='Cargo MSD', linewidth=2)
-        
-        # ガイドライン (傾き1: 普通の拡散, 傾き2: バリスティック)
-        # 最後の点を基準に線を引く
-        if len(time_steps) > 10:
-            ref_idx = -10
-            # Slope = 1 (Normal Diffusion ~ t^1)
-            plt.loglog(time_steps[10:], 
-                       time_steps[10:] * (msd_data[ref_idx]/time_steps[ref_idx]), 
-                       '--', color='gray', label='Slope=1 (Diffusive)')
-            
-            # Slope = 2 (Ballistic ~ t^2)
-            plt.loglog(time_steps[10:], 
-                       (time_steps[10:]**2) * (msd_data[ref_idx]/(time_steps[ref_idx]**2)), 
-                       ':', color='red', label='Slope=2 (Ballistic)')
+        msds = np.array(msds)
+        print(f"📦 Total seeds processed: {msds.shape[0]}")
 
-        plt.xlabel(r'Time Step $\Delta t$')
-        plt.ylabel(r'Mean Squared Displacement $\langle \Delta r^2 \rangle$')
-        plt.title('Cargo Mean Squared Displacement (MSD)')
-        plt.legend()
-        plt.grid(True, which="both", ls="-", alpha=0.3)
+        # 全seedのMSDを保存
+        output = zarr.open("analysis/data/cargo_msd_seeds.zarr", mode='w', shape=msds.shape, dtype=msds.dtype)
+        output[:] = msds
+        print(f"💾 MSD data saved to analysis/data/cargo_msd_seeds.zarr")
         
-        plt.savefig(OUTPUT_PLOT, dpi=300)
-        print(f"✅ Saved plot to: {OUTPUT_PLOT}")
-        
-        # 簡易的な拡散係数の推定 (D = Slope / 4)
-        if len(msd_data) > 100:
-            # 後半のデータで傾きを計算
-            slope = (msd_data[-1] - msd_data[-100]) / (time_steps[-1] - time_steps[-100])
-            print(f"📊 Estimated Diffusion Coefficient D ≈ {slope/4:.4f}")
+        print(f"📈 Average MSD shape: {msds.shape}")
 
     except Exception as e:
         print(f"❌ Error: {e}")
