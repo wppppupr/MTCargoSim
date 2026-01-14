@@ -25,7 +25,7 @@ def polarorderparameter(orientation):
 def ensembleS(folder):
     S_list = []
 
-    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr/nematic_order_param.zarr"))):
+    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr/order_param.zarr"))):
         S = zarr.open_array(f, mode='r')
         S = S[:]
         S_list.append(S)
