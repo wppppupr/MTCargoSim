@@ -21,13 +21,13 @@ const SAVE_INT = 100
 const A = 0.5
 const dt = 0.01
 const start_seed = 1
-const end_seed = 1000  
+const end_seed = 100  
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
 
-for seed in start_seed:end_seed
+for seed in [16, 17, 18, 19, 20, 36, 37, 38, 39, 40, 55, 56, 57, 58, 59, 60, 76, 77, 78, 79, 80, 96, 97, 98, 99, 100]#start_seed:end_seed
     push!(ALL_TASKS, seed)
 end
 

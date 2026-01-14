@@ -141,6 +141,9 @@ def animate(data_folder, save_path = f"animation/MT", box_size=16):
         print(f"保存が完了しました: {save_path}")
 
 if __name__ == "__main__":
-    data = "/Users/sasakinozomu/code/MTCargoSim/src/julia/test_data/P0.1_A0.5/seed999.zarr"
-    save_path = "/Users/sasakinozomu/code/MTCargoSim/src/julia/test_data/P0.1_A0.5/seed999.zarr"
-    animate(data, save_path=save_path)
+    data = "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MT/P0.5_A0.5/seed1.zarr"
+    save_path = "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MT/P0.5_A0.5/seed1.zarr"
+
+    plt.style.use('my_style.mplstyle')
+
+    animate_onlyMT(data, save_path=save_path)
