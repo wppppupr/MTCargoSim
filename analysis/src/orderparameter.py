@@ -47,7 +47,7 @@ def ensembleS(folder):
 if __name__ == "__main__":
 
     # 実行パスはプロジェクトルートを想定して相対パスを指定
-    folder = '/Volumes/My Passport/Sasaki/MTCargoSim/MT/P0.5_A0.9'
+    folder = '/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5'
     save_folder = folder
 
     print(f"Reading seeds from: {folder}")
@@ -55,8 +55,11 @@ if __name__ == "__main__":
         print(f"calculate {f}")
         data = zarr.open_array(os.path.join(f, "orientations"), mode='r')
         orientations = data[:].T
-        S = polarorderparameter(orientations)
-        zarr.save(os.path.join(f, "polar_order_param.zarr"), S)
+        S = orderparameter(orientations)
+        zarr.save(os.path.join(f, "nematic_order_param.zarr"), S)
         print(f"    Order parameter S shape: {S.shape}")
+        P = polarorderparameter(orientations)
+        zarr.save(os.path.join(f, "polar_order_param.zarr"), P)
+        print(f"    Polar Order parameter P shape: {P.shape}")
 
     print("complete!")
