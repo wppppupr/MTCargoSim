@@ -23,26 +23,24 @@ def polarorderparameter(orientation):
     return S
 
 def ensembleS(folder):
-    files = sorted(glob.glob(os.path.join(folder, "seed*.zarr")))
+    S_list = []
 
-    if len(files) == 0:
-        print(f"Warning: no seed folders found in '{folder}'")
-        return np.empty((0,))
+    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr/nematic_order_param.zarr"))):
+        S = zarr.open_array(f, mode='r')
+        S = S[:]
+        S_list.append(S)
 
-    S_lists = []
+    return np.array(S_list)
 
-    for file in files:
-        path = os.path.join(file, "orientations")
-        if not os.path.exists(path):
-            print(f"Warning: orientations file not found: {path}, skipping")
-            continue
-        orientation = zarr.open_array(path, mode='r')
-        orientation = orientation[:].T
-        S = orderparameter(orientation)
-        S_lists.append(S)
-    S_array = np.array(S_lists)
+def ensembleP(folder):
+    P_list = []
 
-    return S_array
+    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr/polar_order_param.zarr"))):
+        P = zarr.open_array(f, mode='r')
+        P = P[:]
+        P_list.append(P)
+
+    return np.array(P_list)
 
 if __name__ == "__main__":
 
