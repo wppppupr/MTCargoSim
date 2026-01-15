@@ -36,21 +36,31 @@ def get_params(zarr_path):
 def calculate_local_polar_order(zarr_path, threshold):
     # 1. データ読み込み
     print(f"📂 Loading: {zarr_path}")
-    store = zarr.open_group(zarr_path, mode='r')
+    positions_path = os.path.join(zarr_path, "positions")
+    orientations_path = os.path.join(zarr_path, "orientations")
+    cargo_path = os.path.join(zarr_path, "cargo")
+    positions_zarr = zarr.open_array(positions_path, mode='r')
+    orientations_zarr = zarr.open_array(orientations_path, mode='r')
+    cargo_zarr = zarr.open_array(cargo_path, mode='r')
     
-    positions = store['positions'][:]      # (Time, N, 2)
-    orientations = store['orientations'][:] # (Time, N) -> 角度theta
+    positions = positions_zarr[:]      
+    orientations = orientations_zarr[:] 
+
+    positions = positions.T         # (Time, N, 2)
+    orientations = orientations.T   # (Time, N) -> 角度theta
     
     # Cargo位置 (Time, 1, 2) または (Time, 2)
-    cargo = store['cargo'][:]
+    cargo = cargo_zarr[:]
     if cargo.ndim == 3:
         cargo = cargo[:, 0, :]
+
+    cargo = cargo.T
         
     params = get_params(zarr_path)
     L = params["box_size"]
     
     num_steps, num_particles = orientations.shape
-    print(f"📦 Box Size: {L}, Threshold: {threshold} um")
+    print(f"📦 Box Size: {L}, Threshold: {threshold}")
 
     local_polar_orders = np.zeros(num_steps)
     interacting_counts = np.zeros(num_steps)
