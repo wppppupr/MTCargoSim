@@ -20,14 +20,14 @@ const STEPS = 1000000
 const SAVE_INT = 100
 const A = 0.5
 const dt = 0.01
-const start_seed = 1
-const end_seed = 100  
+const start_seed = 100
+const end_seed = 201  
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
 
-for seed in [60, 76, 77, 78, 79]#start_seed:end_seed
+for seed in start_seed:end_seed#[60, 76, 77, 78, 79]
     push!(ALL_TASKS, seed)
 end
 
