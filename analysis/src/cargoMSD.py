@@ -118,7 +118,7 @@ if __name__ == "__main__":
     try:
         print(f"🚀 Analyzing: {TARGET_PATH}")
         msds = []
-        for seed in range(1, 96):
+        for seed in range(1, 101):
             seed_path = os.path.join(TARGET_PATH, f"seed{seed}.zarr")
             if os.path.exists(seed_path):
                 msd_data = cargo_msd(seed_path)
