@@ -3,11 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
+import glob
 
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r"/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed.zarr"
+TARGET_PATH = r"/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed*.zarr"
 OUTPUT_PLOT = "local_polar_order.png"
 
 # 近傍とみなす距離 (Cargo半径 + α)
@@ -116,48 +117,27 @@ def calculate_local_polar_order(zarr_path, threshold):
 
 if __name__ == "__main__":
     try:
-        polar_orders, counts = calculate_local_polar_order(TARGET_PATH, INTERACTION_THRESHOLD)
-        
-        # 時間平均の表示
-        # 粒子がいるときだけの平均をとる（0を除外）
-        valid_indices = counts > 0
-        if np.any(valid_indices):
-            avg_p = np.mean(polar_orders[valid_indices])
-            print(f"📊 Average Local Polar Order: {avg_p:.3f}")
-        else:
-            print("⚠️ No interaction detected throughout the simulation.")
+        for seed in glob.glob(TARGET_PATH):
+            polar_orders, counts = calculate_local_polar_order(seed, INTERACTION_THRESHOLD)
 
-        # --- プロット ---
-        fig, ax1 = plt.subplots(figsize=(10, 6))
+            # polar度とカウントの保存
+            polar_path = os.path.join(seed, "polar.zarr")
+            polar_output = zarr.open(
+                polar_path,
+                mode='w',
+                shape = polar_orders.shape,
+                dtype = polar_orders.dtype
+                )
+            polar_output[:] = polar_orders
 
-        time_steps = np.arange(len(polar_orders))
-
-        # 左軸: ポーラー度
-        color = 'tab:red'
-        ax1.set_xlabel('Time Step (saved)')
-        ax1.set_ylabel('Local Polar Order $P$', color=color)
-        ax1.plot(time_steps, polar_orders, color=color, alpha=0.6, linewidth=1, label='Polar Order')
-        ax1.tick_params(axis='y', labelcolor=color)
-        ax1.set_ylim(-0.05, 1.05)
-
-        # 移動平均（太線）
-        window = 100
-        if len(polar_orders) > window:
-            ma = np.convolve(polar_orders, np.ones(window)/window, mode='valid')
-            ax1.plot(np.arange(len(ma)) + window//2, ma, color='darkred', linewidth=2, label='Moving Avg')
-
-        # 右軸: 粒子数（参考用）
-        ax2 = ax1.twinx()  
-        color = 'tab:blue'
-        ax2.set_ylabel('Number of Neighbors', color=color)  
-        ax2.plot(time_steps, counts, color=color, alpha=0.15, linewidth=0.5, label='Count')
-        ax2.tick_params(axis='y', labelcolor=color)
-
-        plt.title(f'Local Polar Order around Cargo (r < {INTERACTION_THRESHOLD} um)')
-        fig.tight_layout()  
-        
-        plt.savefig(OUTPUT_PLOT, dpi=150)
-        print(f"✅ Plot saved to: {OUTPUT_PLOT}")
+            counts_path = os.path.join(seed, "counts.zarr")
+            counts_output = zarr.open(
+                counts_path,
+                mode = 'w',
+                shape = counts.shape,
+                dtype = counts.dtype 
+            )   
+            counts_output[:] = counts     
 
     except Exception as e:
         print(f"❌ Error: {e}")

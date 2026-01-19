@@ -2,13 +2,14 @@ import zarr
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import glob
 
 # =============================================================================
 # 設定
 # =============================================================================
 # 解析したいZarrデータのパス (Windowsのパス形式に対応)
 # 文字列の前に r を付けると \ をそのまま扱えます
-TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5'
+TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed*.zarr'
 
 # 保存するグラフのファイル名
 OUTPUT_PLOT = "analysis/data/cargo_msd.png"
@@ -118,12 +119,10 @@ if __name__ == "__main__":
     try:
         print(f"🚀 Analyzing: {TARGET_PATH}")
         msds = []
-        for seed in range(1, 101):
-            seed_path = os.path.join(TARGET_PATH, f"seed{seed}.zarr")
-            if os.path.exists(seed_path):
-                msd_data = cargo_msd(seed_path)
-                msds.append(msd_data)
-                print(f"    ✅ Seed {seed}: MSD shape {msd_data.shape}")
+        for seed in glob.glob(TARGET_PATH):
+            msd_data = cargo_msd(seed)
+            msds.append(msd_data)
+            print(f"    ✅ {seed}: MSD shape {msd_data.shape}")
 
         msds = np.array(msds)
         print(f"📦 Total seeds processed: {msds.shape[0]}")
