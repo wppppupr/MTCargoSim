@@ -141,8 +141,8 @@ def animate(data_folder, save_path = f"animation/MT", box_size=16):
         print(f"保存が完了しました: {save_path}")
 
 if __name__ == "__main__":
-    data = "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed1.zarr"
-    save_path = "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed1.zarr"
+    data = '/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed1.zarr'
+    save_path = '/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed1.zarr'
 
     plt.style.use('my_style.mplstyle')
 
