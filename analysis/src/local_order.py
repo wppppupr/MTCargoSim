@@ -118,7 +118,10 @@ def calculate_local_polar_order(zarr_path, threshold):
 if __name__ == "__main__":
     try:
         for seed in glob.glob(TARGET_PATH):
-            polar_path = os.path.join(seed, "polar.zarr")
+            if seed == "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed29.zarr":
+                continue
+
+            polar_path = os.path.join(seed, "local_polar.zarr")
 
             if os.path.exists(polar_path):
                 continue
