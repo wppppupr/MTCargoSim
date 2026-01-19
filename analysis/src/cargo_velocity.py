@@ -82,26 +82,17 @@ def calculate_displacement(zarr_path, shift=1):
 if __name__ == "__main__":
     try:
         for seed in glob.glob(TARGET_PATH):
-            polar_orders, counts = calculate_local_polar_order(seed, INTERACTION_THRESHOLD)
+            displacement = calculate_displacement(seed, shift)
 
             # polar度とカウントの保存
-            polar_path = os.path.join(seed, "polar.zarr")
+            displacement_path = os.path.join(seed, f"displacement_shift{shift}.zarr")
             polar_output = zarr.open(
-                polar_path,
+                displacement_path,
                 mode='w',
-                shape = polar_orders.shape,
-                dtype = polar_orders.dtype
+                shape = displacement.shape,
+                dtype = displacement.dtype
                 )
-            polar_output[:] = polar_orders
-
-            counts_path = os.path.join(seed, "counts.zarr")
-            counts_output = zarr.open(
-                counts_path,
-                mode = 'w',
-                shape = counts.shape,
-                dtype = counts.dtype 
-            )   
-            counts_output[:] = counts     
+            polar_output[:] = displacement
 
     except Exception as e:
         print(f"❌ Error: {e}")

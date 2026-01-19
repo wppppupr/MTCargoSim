@@ -118,26 +118,30 @@ def calculate_local_polar_order(zarr_path, threshold):
 if __name__ == "__main__":
     try:
         for seed in glob.glob(TARGET_PATH):
-            polar_orders, counts = calculate_local_polar_order(seed, INTERACTION_THRESHOLD)
-
-            # polar度とカウントの保存
             polar_path = os.path.join(seed, "polar.zarr")
-            polar_output = zarr.open(
-                polar_path,
-                mode='w',
-                shape = polar_orders.shape,
-                dtype = polar_orders.dtype
-                )
-            polar_output[:] = polar_orders
 
-            counts_path = os.path.join(seed, "counts.zarr")
-            counts_output = zarr.open(
-                counts_path,
-                mode = 'w',
-                shape = counts.shape,
-                dtype = counts.dtype 
-            )   
-            counts_output[:] = counts     
+            if os.path.exists(polar_path):
+                continue
+            else:
+                polar_orders, counts = calculate_local_polar_order(seed, INTERACTION_THRESHOLD)
+
+                # polar度とカウントの保存
+                polar_output = zarr.open(
+                    polar_path,
+                    mode='w',
+                    shape = polar_orders.shape,
+                    dtype = polar_orders.dtype
+                    )
+                polar_output[:] = polar_orders
+
+                counts_path = os.path.join(seed, "counts.zarr")
+                counts_output = zarr.open(
+                    counts_path,
+                    mode = 'w',
+                    shape = counts.shape,
+                    dtype = counts.dtype 
+                )   
+                counts_output[:] = counts     
 
     except Exception as e:
         print(f"❌ Error: {e}")
