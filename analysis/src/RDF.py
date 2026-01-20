@@ -3,30 +3,40 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
+import glob
 from get_params import get_params
 
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r"data/MTC/P0.5_A0.5/seed1.zarr"
-OUTPUT_PLOT = "agent_localization_rdf.png"
+TARGET_PATH = r"data/MTC/P0.5_A0.5"
 
 # RDFの計算設定
 MAX_R = 8.0     # 計算する最大距離 (Box size / 2 が目安)
-BIN_WIDTH = 0.1 # ヒストグラムのビンの幅 (um)
+BIN_WIDTH = 0.1 # ヒストグラムのビンの幅
 
 # =============================================================================
 # 関数定義
 # =============================================================================
 
 def calculate_rdf(zarr_path, max_r, bin_width):
+    # 1. データ読み込み
     print(f"📂 Loading: {zarr_path}")
-    store = zarr.open_group(zarr_path, mode='r')
+    positions_path = os.path.join(zarr_path, "positions")
+    cargo_path = os.path.join(zarr_path, "cargo")
+    positions_zarr = zarr.open_array(positions_path, mode='r')
+    cargo_zarr = zarr.open_array(cargo_path, mode='r')
     
-    positions = store['positions'][:] # (Time, N, 2)
+    positions = positions_zarr[:]      
+
+    positions = positions.T         # (Time, N, 2)
     
-    cargo = store['cargo'][:]
-    if cargo.ndim == 3: cargo = cargo[:, 0, :] # (Time, 2)
+    # Cargo位置 (Time, 1, 2) または (Time, 2)
+    cargo = cargo_zarr[:]
+    if cargo.ndim == 3:
+        cargo = cargo[:, 0, :]
+
+    cargo = cargo.T
 
     params = get_params(zarr_path)
     L = params["box_size"]
@@ -80,28 +90,15 @@ def calculate_rdf(zarr_path, max_r, bin_width):
 
 if __name__ == "__main__":
     try:
-        r, g_r = calculate_rdf(TARGET_PATH, MAX_R, BIN_WIDTH)
-        
-        # --- プロット ---
-        plt.figure(figsize=(8, 6))
-        
-        plt.plot(r, g_r, color='blue', linewidth=2, label='MTs around Cargo')
-        
-        # 基準線 (g(r)=1: ランダム分布)
-        plt.axhline(1.0, color='gray', linestyle='--', label='Random Distribution')
-        
-        plt.xlabel('Distance from Cargo $r$ [um]')
-        plt.ylabel('Radial Distribution Function $g(r)$')
-        plt.title('Localization of MTs around Cargo')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        
-        plt.savefig(OUTPUT_PLOT, dpi=150)
-        print(f"✅ Plot saved to: {OUTPUT_PLOT}")
-        
-        # 特徴的なピークの検出
-        peak_idx = np.argmax(g_r)
-        print(f"📍 Peak localization at r = {r[peak_idx]:.2f} um (Intensity: {g_r[peak_idx]:.2f})")
+        path = os.path.join(TARGET_PATH, "seed*.zarr")
+        for seed in glob.glob(path):
+            if seed == "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed29.zarr":
+                continue
+            r, g_r = calculate_rdf(TARGET_PATH, MAX_R, BIN_WIDTH)
+            RDF = np.array([r, g_r])
+            RDF_zarr = zarr.open(os.path.join(seed, "RDF.zarr"), mode='w', shape=RDF.shape, dtype = RDF.dtype)
+            RDF_zarr[:] = RDF
+
 
     except Exception as e:
         print(f"❌ Error: {e}")
