@@ -45,19 +45,25 @@ def ensembleP(folder):
 if __name__ == "__main__":
 
     # 実行パスはプロジェクトルートを想定して相対パスを指定
-    folder = '/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5'
+    folder = '/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5'
     save_folder = folder
 
     print(f"Reading seeds from: {folder}")
-    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr"))):
+    for f in glob.glob(os.path.join(folder, "seed*.zarr")):
+        nematic_path = os.path.join(f, "nematic_order_param.zarr")
+        polar_path = os.path.join(f, "polar_order_param.zarr")
+        if os.path.exists(nematic_path) and os.path.exists(polar_path):
+                continue
         print(f"calculate {f}")
         data = zarr.open_array(os.path.join(f, "orientations"), mode='r')
         orientations = data[:].T
         S = orderparameter(orientations)
-        zarr.save(os.path.join(f, "nematic_order_param.zarr"), S)
+        nematic_zarr = zarr.open(nematic_path, mode = 'w', shape=S.shape, dtype = S.dtype)
+        nematic_zarr[:] = S
         print(f"    Order parameter S shape: {S.shape}")
         P = polarorderparameter(orientations)
-        zarr.save(os.path.join(f, "polar_order_param.zarr"), P)
+        polar_zarr = zarr.open(polar_path, mode = 'w', shape = P.shape, dtype = P.dtype)
+        polar_zarr[:] = P
         print(f"    Polar Order parameter P shape: {P.shape}")
 
     print("complete!")
