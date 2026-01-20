@@ -9,7 +9,7 @@ from get_params import get_params
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r"data/MTC/P0.5_A0.5"
+TARGET_PATH = r"/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5"
 
 # RDFの計算設定
 MAX_R = 8.0     # 計算する最大距離 (Box size / 2 が目安)
@@ -91,14 +91,17 @@ def calculate_rdf(zarr_path, max_r, bin_width):
 if __name__ == "__main__":
     try:
         path = os.path.join(TARGET_PATH, "seed*.zarr")
+        print(path)
         for seed in glob.glob(path):
+            RDF_path=os.path.join(seed, "RDF.zarr")
             if seed == "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed29.zarr":
                 continue
-            r, g_r = calculate_rdf(TARGET_PATH, MAX_R, BIN_WIDTH)
+            if os.path.exists(RDF_path):
+                continue
+            r, g_r = calculate_rdf(seed, MAX_R, BIN_WIDTH)
             RDF = np.array([r, g_r])
-            RDF_zarr = zarr.open(os.path.join(seed, "RDF.zarr"), mode='w', shape=RDF.shape, dtype = RDF.dtype)
+            RDF_zarr = zarr.open(RDF_path, mode='w', shape=RDF.shape, dtype = RDF.dtype)
             RDF_zarr[:] = RDF
-
 
     except Exception as e:
         print(f"❌ Error: {e}")
