@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
 import glob
+from get_params import get_params
 
 # =============================================================================
 # 設定
@@ -18,21 +19,6 @@ INTERACTION_THRESHOLD = 0.28  # [um]
 # =============================================================================
 # 関数定義
 # =============================================================================
-
-def get_params(zarr_path):
-    """parameters.txt から box_size 等を読み取る"""
-    params = {"box_size": 16.0}
-    param_path = os.path.join(zarr_path, "parameters.txt")
-    
-    if os.path.exists(param_path):
-        with open(param_path, "r") as f:
-            for line in f:
-                try:
-                    if "box_size" in line:
-                        params["box_size"] = float(line.split("=")[1].strip())
-                except:
-                    pass
-    return params
 
 def calculate_local_polar_order(zarr_path, threshold):
     # 1. データ読み込み
