@@ -91,7 +91,6 @@ def calculate_rdf(zarr_path, max_r, bin_width):
 if __name__ == "__main__":
     try:
         path = os.path.join(TARGET_PATH, "seed*.zarr")
-        print(path)
         for seed in glob.glob(path):
             RDF_path=os.path.join(seed, "RDF.zarr")
             if seed == "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed29.zarr":
