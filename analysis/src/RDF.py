@@ -9,7 +9,7 @@ from get_params import get_params
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r"/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5"
+TARGET_PATH = r"/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5"
 
 # RDFの計算設定
 MAX_R = 8.0     # 計算する最大距離 (Box size / 2 が目安)
@@ -93,8 +93,6 @@ if __name__ == "__main__":
         path = os.path.join(TARGET_PATH, "seed*.zarr")
         for seed in glob.glob(path):
             RDF_path=os.path.join(seed, "RDF.zarr")
-            if seed == "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed29.zarr":
-                continue
             if os.path.exists(RDF_path):
                 continue
             r, g_r = calculate_rdf(seed, MAX_R, BIN_WIDTH)

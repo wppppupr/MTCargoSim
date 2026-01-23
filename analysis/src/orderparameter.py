@@ -45,7 +45,7 @@ def ensembleP(folder):
 if __name__ == "__main__":
 
     # 実行パスはプロジェクトルートを想定して相対パスを指定
-    folder = '/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5'
+    folder = "/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5"
     save_folder = folder
 
     print(f"Reading seeds from: {folder}")

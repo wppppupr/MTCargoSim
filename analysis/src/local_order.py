@@ -9,7 +9,7 @@ from get_params import get_params
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r"/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed*.zarr"
+TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed*.zarr'
 OUTPUT_PLOT = "local_polar_order.png"
 
 # 近傍とみなす距離 (Cargo半径 + α)
@@ -104,8 +104,6 @@ def calculate_local_polar_order(zarr_path, threshold):
 if __name__ == "__main__":
     try:
         for seed in glob.glob(TARGET_PATH):
-            if seed == "/Volumes/data/Sasaki/backup_git/MTCargoSim/data/MTC/P0.5_A0.5/seed29.zarr":
-                continue
 
             polar_path = os.path.join(seed, "local_polar.zarr")
 

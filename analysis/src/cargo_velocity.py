@@ -84,7 +84,6 @@ if __name__ == "__main__":
         for seed in glob.glob(TARGET_PATH):
             displacement = calculate_displacement(seed, shift)
 
-            # polar度とカウントの保存
             displacement_path = os.path.join(seed, f"displacement_shift{shift}.zarr")
             polar_output = zarr.open(
                 displacement_path,
