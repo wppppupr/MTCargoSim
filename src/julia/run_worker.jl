@@ -27,7 +27,7 @@ const end_seed = 201
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
 
-for seed in [29, 159, 175, 176, 177, 178] #start_seed:end_seed
+for seed in [60, 76, 77, 78, 79] #start_seed:end_seed
     push!(ALL_TASKS, seed)
 end
 
