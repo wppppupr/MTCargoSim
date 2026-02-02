@@ -1,6 +1,6 @@
 using Pkg
 
-println("🛠️  Windows環境セットアップを開始します...")
+println("🛠️  linux環境セットアップを開始します...")
 
 # 1. Juliaパッケージのインストール
 println("\n Juliaパッケージをインストール中...")
