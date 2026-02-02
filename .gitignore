@@ -22,3 +22,6 @@ animation/
 # または拡張子で広く無視する設定
 *.npy
 *.mov
+# pixi environments
+.pixi/*
+!.pixi/config.toml

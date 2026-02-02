@@ -1,0 +1,20 @@
+[workspace]
+authors = ["Sasaki_ubuntu <0704waffle@gmail.com>"]
+channels = ["conda-forge"]
+name = "MTCargoSim"
+# Linux (linux-64) と Mac (osx-arm64) の両方に対応させる
+platforms = ["linux-64", "osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.11.*"  # 3.11系に固定する
+numpy = "*"
+matplotlib = "*"
+zarr = "*"
+pandas = "*"
+scikit-image = "*"
+tqdm = "*"
+ffmpeg = "*"
+jupyterlab = "*"
