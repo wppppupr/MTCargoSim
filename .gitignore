@@ -11,6 +11,10 @@ venv/
 *.jld2
 .julia/
 
+# image
+*.png
+*.pdf
+
 # Data (計算結果などの巨大ファイルは無視)
 data/*.npy
 animation/*.mov
