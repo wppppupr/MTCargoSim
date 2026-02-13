@@ -19,13 +19,14 @@ export Parameters, Datas, run_simulation, MT_simulation
     A::Float64                          # 整列相互作用の強さ (必須)
     dt::Float64                  # タイムステップ
     seed::Int                           # 乱数シード
+    cargo_radius::Float64        # 荷物の半径 [um]　デフォルトは 0.59
     
     # --- デフォルト値を持つ基本パラメータ ---
-    cargo_radius::Float64 = 0.59        # 荷物の半径 [um]
+    
     d_MT::Float64 = 0.025               # 微小管の直径 [um]
     r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
     box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
-    tau::Float64 = 1.18                 # 時間スケール [t]
+    v_MT::Float64 = 0.5                 # 微小管の速度 [um/s]
     warmup_dt::Float64 = 0.1            # ウォームアップステップのタイムステップ
     Dr_exp::Float64 = 0.0125            # 実験から得られた微小管の回転拡散 [rad/s]
     k_cargo::Float64 = 2.26e-2
@@ -34,6 +35,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     f::Float64 = 1.13e-2                # DNAの力 [µN]
 
     # --- 計算によって決まる派生パラメータ ---
+    tau::Float64                 # 時間スケール [t]
     num_particles::Int
     interaction_radius::Float64
     r_a::Float64                        # 貨物と微小管の相互作用範囲
@@ -51,13 +53,13 @@ function Parameters(;
     A::Float64,
     dt::Float64,
     seed::Int,
+    cargo_radius::Float64,
     
     # オプション引数
-    cargo_radius::Float64 = 0.59,
     d_MT::Float64 = 0.025,
     r_int::Float64 = 0.1,
     box_size::Float64 = 16.0,
-    tau::Float64 = 1.18,
+    v_MT::Float64 = 0.5,                 # 微小管の速度 [um/s]
     warmup_dt::Float64 = 0.1,
     Dr_exp::Float64 = 0.0125,
     k_cargo::Float64 = 2.26e-2,
@@ -66,6 +68,7 @@ function Parameters(;
     f::Float64 = 1.13e-2
 )
     # 派生パラメータ計算
+    tau = cargo_radius/v_MT
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
     interaction_radius = r_int / cargo_radius
     r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
@@ -76,9 +79,9 @@ function Parameters(;
 
     return Parameters(
         packing_fraction, A, dt, seed,
-        cargo_radius, d_MT, r_int, box_size,
+        cargo_radius, d_MT, r_int, box_size, v_MT,
         tau, warmup_dt, Dr_exp, k_cargo,
-        k_MT, dna, f,
+        k_MT, dna, f, tau,
         num_particles,
         interaction_radius,
         r_a, r_dna,
