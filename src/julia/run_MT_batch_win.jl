@@ -18,7 +18,8 @@ for A in [0.0:0.1:1.0;]
         params = Parameters(
             packing_fraction = 0.5,
             A = A,
-            seed = seed
+            seed = seed,
+            cargo_raius = cargo_raius
         )
         # 3. シミュレーション実行
         MT_simulation(params, steps; 

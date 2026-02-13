@@ -16,6 +16,10 @@ function parse_commandline()
             help = "Alignment interaction strength (default: 0.5)"
             arg_type = Float64
             default = 0.5
+        "--cargo_radius", "-R"
+            help = "cargo raius (default: 0.59)"
+            arg_type = Float64
+            default = 0.59
         "--seed", "-s"
             help = "Random seed (default: 1)"
             arg_type = Int
