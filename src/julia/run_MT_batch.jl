@@ -40,7 +40,7 @@ function run_for_a(p::Float64, a::Float64; steps::Int=300000, max_seed::Int=201,
             seed = seed,
             cargo_raius = cargo_radius
         )
-        run_simulation(params, steps; base_path=base_path)
+        run_simulation(params, warmup, steps; base_path=base_path)
         return nothing
     end
 end

@@ -20,7 +20,8 @@ const STEPS = 1000000
 const SAVE_INT = 100
 const A = 0.5
 const dt = 0.01
-const start_seed = 100
+const cargo_radius = 0.315
+const start_seed = 1
 const end_seed = 201  
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
@@ -58,7 +59,8 @@ function main()
                     packing_fraction = 0.5,
                     A = A,
                     dt = dt,
-                    seed = seed
+                    seed = seed,
+                    cargo_radius = cargo_radius
                 )
 
                 MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT)
