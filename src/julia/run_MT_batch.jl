@@ -30,17 +30,19 @@ end
 
 # --- メイン処理 ---
 function run_for_a(p::Float64, a::Float64; steps::Int=300000, max_seed::Int=1000)
-    println("開始: packing_fraction=$(p), A=$(a), seeds=1:$max_seed, steps=$steps, cargo_raius = $cargo_raius")
+    cargo_radius = 0.315
+    dt = 0.01
+    println("開始: packing_fraction=$(p), A=$(a), seeds=1:$max_seed, steps=$steps, cargo_radius = $cargo_radius")
 
     pmap(1:max_seed) do seed
         params = Parameters(
             packing_fraction = p,
             A = a,
-            steps = steps,
+            dt = dt,
             seed = seed,
-            cargo_raius = cargo_raius
+            cargo_radius = cargo_radius
         )
-        MT_simulation(params, steps)
+        MT_simulation(params, steps; base_path="data")
         return nothing
     end
 end
