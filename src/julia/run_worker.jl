@@ -22,8 +22,7 @@ const A = 0.5
 const dt = 0.01
 const cargo_radius = 0.315
 const start_seed = 1
-const end_seed = 201  
-base_path = "/media/Sasaki/myssd"
+const end_seed = 201
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
