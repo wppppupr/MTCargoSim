@@ -23,6 +23,7 @@ const dt = 0.01
 const cargo_radius = 0.315
 const start_seed = 1
 const end_seed = 201  
+base_path = "/media/Sasaki/myssd"
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
@@ -63,7 +64,7 @@ function main()
                     cargo_radius = cargo_radius
                 )
 
-                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT)
+                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT, base_path = base_path)
 
                 # メモリ解放
                 GC.gc()
