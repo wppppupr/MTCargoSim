@@ -80,7 +80,7 @@ function Parameters(;
     return Parameters(
         packing_fraction, A, dt, seed,
         cargo_radius, d_MT, r_int, box_size, v_MT,
-        tau, warmup_dt, Dr_exp, k_cargo,
+        warmup_dt, Dr_exp, k_cargo,
         k_MT, dna, f, tau,
         num_particles,
         interaction_radius,
