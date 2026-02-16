@@ -63,7 +63,7 @@ function main()
                     cargo_radius = cargo_radius
                 )
 
-                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT, base_path = base_path)
+                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT)
 
                 # メモリ解放
                 GC.gc()
