@@ -279,7 +279,7 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
 
     # --- Zarr保存処理 ---
     # NASパスの設定 (joinpathを使用)
-    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_cargo_raius$(params.cargo_raius)", "seed$(params.seed).zarr")
+    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_cargo_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
     
     mkpath(folder_path)
 
@@ -345,7 +345,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
     end
 
     # --- Zarr保存処理 ---
-    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_cargo_raius$(params.cargo_raius)", "seed$(params.seed).zarr")
+    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_cargo_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
     
     mkpath(folder_path)
 
