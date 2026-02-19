@@ -248,7 +248,7 @@ end
 
 # --- メインシミュレーション関数 (Zarr対応版) ---
 
-function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100, base_path = "E:\\Sasaki\\MTCargoSim\\MT")
+function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100, base_path = "data")
     data = initialize(params)
 
     # 保存用に配列を確保（間引いたサイズ）
@@ -279,7 +279,7 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
 
     # --- Zarr保存処理 ---
     # NASパスの設定 (joinpathを使用)
-    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_cargo_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
+    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_kMT$(params.k_MT)_kcargo$(params.k_cargo)_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
     
     mkpath(folder_path)
 
@@ -310,7 +310,7 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
     return nothing
 end
 
-function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_interval::Int=100, base_path = "E:\\Sasaki\\MTCargoSim\\MTC")
+function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_interval::Int=100, base_path = "data")
     data = initialize(params)
     num_saved_steps = div(num_steps, save_interval)
 
@@ -345,7 +345,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
     end
 
     # --- Zarr保存処理 ---
-    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_cargo_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
+    folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_kMT$(params.k_MT)_kcargo$(params.k_cargo)_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
     
     mkpath(folder_path)
 
