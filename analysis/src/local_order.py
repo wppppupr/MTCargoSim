@@ -5,22 +5,19 @@ import os
 from tqdm import tqdm
 import glob
 from get_params import get_params
+import argparse
 
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed*.zarr'
+DEFAULT_TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed*.zarr'
 OUTPUT_PLOT = "local_polar_order.png"
-
-# 近傍とみなす距離 (Cargo半径 + α)
-# 力学的相互作用範囲、または幾何学的な近接範囲を設定してください
-INTERACTION_THRESHOLD = 0.28  # [um]
 
 # =============================================================================
 # 関数定義
 # =============================================================================
 
-def calculate_local_polar_order(zarr_path, threshold):
+def calculate_local_polar_order(zarr_path, thresholds):
     # 1. データ読み込み
     print(f"📂 Loading: {zarr_path}")
     positions_path = os.path.join(zarr_path, "positions")
@@ -47,10 +44,11 @@ def calculate_local_polar_order(zarr_path, threshold):
     L = params["box_size"]
     
     num_steps, num_particles = orientations.shape
-    print(f"📦 Box Size: {L}, Threshold: {threshold}")
+    num_thresholds = len(thresholds)
+    print(f"📦 Box Size: {L}, Thresholds: {thresholds}")
 
-    local_polar_orders = np.zeros(num_steps)
-    interacting_counts = np.zeros(num_steps)
+    local_polar_orders = np.zeros((num_steps, num_thresholds))
+    interacting_counts = np.zeros((num_steps, num_thresholds))
 
     # 2. ステップごとに計算
     print("🧮 Calculating local polar order...")
@@ -71,29 +69,30 @@ def calculate_local_polar_order(zarr_path, threshold):
         dist_sq = np.sum(delta**2, axis=1) # (N,)
         
         # --- 近傍粒子の抽出 ---
-        # 閾値以内の粒子のインデックス (Boolean mask)
-        mask = dist_sq < threshold**2
-        
-        count = np.sum(mask)
-        interacting_counts[t] = count
-        
-        if count > 0:
-            # 近傍粒子の角度を取得
-            thetas_local = ori_t[mask]
+        for i, threshold in enumerate(thresholds):
+            # 閾値以内の粒子のインデックス (Boolean mask)
+            mask = dist_sq < threshold**2
             
-            # --- ポーラー度 (Polar Order) 計算 ---
-            # P = | < e^(i*theta) > |
-            #   = sqrt( <cos>^2 + <sin>^2 )
+            count = np.sum(mask)
+            interacting_counts[t, i] = count
             
-            # ベクトル和をとってから正規化するのと同義
-            mean_cos = np.mean(np.cos(thetas_local))
-            mean_sin = np.mean(np.sin(thetas_local))
-            
-            P = np.sqrt(mean_cos**2 + mean_sin**2)
-            local_polar_orders[t] = P
-        else:
-            # 近傍に誰もいない場合は定義できない (0 または NaN)
-            local_polar_orders[t] = 0.0 # ここでは0とします
+            if count > 0:
+                # 近傍粒子の角度を取得
+                thetas_local = ori_t[mask]
+
+                # --- ポーラー度 (Polar Order) 計算 ---
+                # P = | < e^(i*theta) > |
+                #   = sqrt( <cos>^2 + <sin>^2 )
+
+                # ベクトル和をとってから正規化するのと同義
+                mean_cos = np.mean(np.cos(thetas_local))
+                mean_sin = np.mean(np.sin(thetas_local))
+
+                P = np.sqrt(mean_cos**2 + mean_sin**2)
+                local_polar_orders[t, i] = P
+            else:
+                # 近傍に誰もいない場合は定義できない (0 または NaN)
+                local_polar_orders[t, i] = 0.0 # ここでは0とします
 
     return local_polar_orders, interacting_counts
 
@@ -102,33 +101,63 @@ def calculate_local_polar_order(zarr_path, threshold):
 # =============================================================================
 
 if __name__ == "__main__":
-    try:
-        for seed in glob.glob(TARGET_PATH):
+    parser = argparse.ArgumentParser(description="Calculate local polar order parameter around cargo.")
+    parser.add_argument("target_path", type=str, nargs='?', default=DEFAULT_TARGET_PATH, help="Path pattern for zarr files (e.g. 'data/seed*.zarr')")
+    parser.add_argument("--min", type=float, help="Minimum threshold for interaction range")
+    parser.add_argument("--max", type=float, help="Maximum threshold for interaction range")
+    parser.add_argument("--step", type=float, default=0.01, help="Step size for threshold range")
+    parser.add_argument("--threshold", type=float, default=0.28, help="Single threshold value (used if min/max not specified)")
 
+    args = parser.parse_args()
+
+    # Determine thresholds
+    if args.min is not None and args.max is not None:
+        thresholds = np.arange(args.min, args.max + args.step/1000.0, args.step)
+    else:
+        thresholds = np.array([args.threshold])
+
+    try:
+        seeds = glob.glob(args.target_path)
+        if not seeds:
+            print(f"⚠️ No files found matching pattern: {args.target_path}")
+
+        for seed in seeds:
             polar_path = os.path.join(seed, "local_polar.zarr")
+            counts_path = os.path.join(seed, "counts.zarr")
+            thresholds_path = os.path.join(seed, "thresholds.zarr")
 
             if os.path.exists(polar_path):
-                continue
-            else:
-                polar_orders, counts = calculate_local_polar_order(seed, INTERACTION_THRESHOLD)
+                 print(f"♻️ Overwriting existing output in {seed}")
 
-                # polar度とカウントの保存
-                polar_output = zarr.open(
-                    polar_path,
-                    mode='w',
-                    shape = polar_orders.shape,
-                    dtype = polar_orders.dtype
-                    )
-                polar_output[:] = polar_orders
+            polar_orders, counts = calculate_local_polar_order(seed, thresholds)
 
-                counts_path = os.path.join(seed, "counts.zarr")
-                counts_output = zarr.open(
-                    counts_path,
-                    mode = 'w',
-                    shape = counts.shape,
-                    dtype = counts.dtype 
-                )   
-                counts_output[:] = counts     
+            # polar度とカウントの保存
+            polar_output = zarr.open(
+                polar_path,
+                mode='w',
+                shape = polar_orders.shape,
+                dtype = polar_orders.dtype
+                )
+            polar_output[:] = polar_orders
+
+            counts_output = zarr.open(
+                counts_path,
+                mode = 'w',
+                shape = counts.shape,
+                dtype = counts.dtype
+            )
+            counts_output[:] = counts
+
+            # Save thresholds
+            thresholds_output = zarr.open(
+                thresholds_path,
+                mode = 'w',
+                shape = thresholds.shape,
+                dtype = thresholds.dtype
+            )
+            thresholds_output[:] = thresholds
 
     except Exception as e:
         print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
