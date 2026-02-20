@@ -43,6 +43,8 @@ def calculate_center_polar_order(zarr_path, thresholds):
     # 中心の座標
     center_pos = np.array([L/2, L/2])
 
+    thresholds_sq = thresholds**2
+
     # 2. ステップごとに計算
     print("🧮 Calculating center polar order...")
     for t in tqdm(range(num_steps)):
@@ -60,31 +62,31 @@ def calculate_center_polar_order(zarr_path, thresholds):
         # 二乗距離
         dist_sq = np.sum(delta**2, axis=1) # (N,)
 
-        # --- 近傍粒子の抽出 ---
-        for i, threshold in enumerate(thresholds):
-            # 閾値以内の粒子のインデックス (Boolean mask)
-            mask = dist_sq < threshold**2
+        # --- 近傍粒子の抽出 (Vectorized over thresholds) ---
+        # mask shape: (N, M)
+        mask = dist_sq[:, np.newaxis] < thresholds_sq[np.newaxis, :]
 
-            count = np.sum(mask)
-            interacting_counts[t, i] = count
+        # counts shape: (M,)
+        counts = np.sum(mask, axis=0)
+        interacting_counts[t] = counts
 
-            if count > 0:
-                # 近傍粒子の角度を取得
-                thetas_local = ori_t[mask]
+        cos_thetas = np.cos(ori_t) # (N,)
+        sin_thetas = np.sin(ori_t) # (N,)
 
-                # --- ポーラー度 (Polar Order) 計算 ---
-                # P = | < e^(i*theta) > |
-                #   = sqrt( <cos>^2 + <sin>^2 )
+        # Using matrix multiplication: (N,) @ (N, M) -> (M,)
+        sum_cos = cos_thetas @ mask
+        sum_sin = sin_thetas @ mask
 
-                # ベクトル和をとってから正規化するのと同義
-                mean_cos = np.mean(np.cos(thetas_local))
-                mean_sin = np.mean(np.sin(thetas_local))
+        # Avoid division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            mean_cos = sum_cos / counts
+            mean_sin = sum_sin / counts
+            P = np.sqrt(mean_cos**2 + mean_sin**2)
 
-                P = np.sqrt(mean_cos**2 + mean_sin**2)
-                local_polar_orders[t, i] = P
-            else:
-                # 近傍に誰もいない場合は定義できない (0 または NaN)
-                local_polar_orders[t, i] = 0.0 # ここでは0とします
+        # Replace NaNs (where counts == 0) with 0.0
+        P[counts == 0] = 0.0
+
+        local_polar_orders[t] = P
 
     return local_polar_orders, interacting_counts
 

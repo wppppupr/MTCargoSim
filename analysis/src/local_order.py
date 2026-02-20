@@ -50,6 +50,8 @@ def calculate_local_polar_order(zarr_path, thresholds):
     local_polar_orders = np.zeros((num_steps, num_thresholds))
     interacting_counts = np.zeros((num_steps, num_thresholds))
 
+    thresholds_sq = thresholds**2
+
     # 2. ステップごとに計算
     print("🧮 Calculating local polar order...")
     for t in tqdm(range(num_steps)):
@@ -68,31 +70,36 @@ def calculate_local_polar_order(zarr_path, thresholds):
         # 二乗距離
         dist_sq = np.sum(delta**2, axis=1) # (N,)
         
-        # --- 近傍粒子の抽出 ---
-        for i, threshold in enumerate(thresholds):
-            # 閾値以内の粒子のインデックス (Boolean mask)
-            mask = dist_sq < threshold**2
-            
-            count = np.sum(mask)
-            interacting_counts[t, i] = count
-            
-            if count > 0:
-                # 近傍粒子の角度を取得
-                thetas_local = ori_t[mask]
+        # --- 近傍粒子の抽出 (Vectorized over thresholds) ---
+        # mask shape: (N, M) where M is num_thresholds
+        mask = dist_sq[:, np.newaxis] < thresholds_sq[np.newaxis, :]
 
-                # --- ポーラー度 (Polar Order) 計算 ---
-                # P = | < e^(i*theta) > |
-                #   = sqrt( <cos>^2 + <sin>^2 )
+        # counts shape: (M,)
+        counts = np.sum(mask, axis=0)
+        interacting_counts[t] = counts
 
-                # ベクトル和をとってから正規化するのと同義
-                mean_cos = np.mean(np.cos(thetas_local))
-                mean_sin = np.mean(np.sin(thetas_local))
+        # Calculate sums of cos/sin for each threshold
+        # mask is boolean, cast to float for matmul?
+        # Actually np.dot handles boolean array as 0/1 integers.
+        # But explicitly casting might be safer/clearer.
 
-                P = np.sqrt(mean_cos**2 + mean_sin**2)
-                local_polar_orders[t, i] = P
-            else:
-                # 近傍に誰もいない場合は定義できない (0 または NaN)
-                local_polar_orders[t, i] = 0.0 # ここでは0とします
+        cos_thetas = np.cos(ori_t) # (N,)
+        sin_thetas = np.sin(ori_t) # (N,)
+
+        # Using matrix multiplication: (N,) @ (N, M) -> (M,)
+        sum_cos = cos_thetas @ mask
+        sum_sin = sin_thetas @ mask
+
+        # Avoid division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            mean_cos = sum_cos / counts
+            mean_sin = sum_sin / counts
+            P = np.sqrt(mean_cos**2 + mean_sin**2)
+
+        # Replace NaNs (where counts == 0) with 0.0
+        P[counts == 0] = 0.0
+
+        local_polar_orders[t] = P
 
     return local_polar_orders, interacting_counts
 
