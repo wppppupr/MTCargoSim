@@ -1,18 +1,19 @@
 import zarr
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-import glob
+
+from pathlib import Path
 
 # =============================================================================
 # 設定
 # =============================================================================
-# 解析したいZarrデータのパス (Windowsのパス形式に対応)
-# 文字列の前に r を付けると \ をそのまま扱えます
-TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed*.zarr'
+# 解析したいデータの親ディレクトリ
+BASE_PATH = Path(r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59')
+# seed*.zarr にマッチするパスのリストを取得
+TARGET_SEEDS = sorted(list(BASE_PATH.glob('seed*.zarr')))
 
-# 保存するグラフのファイル名
-OUTPUT_PLOT = "analysis/data/cargo_msd.png"
+# 出力設定
+OUTPUT_DATA = BASE_PATH / 'cargo_msd_seeds.zarr'
 
 # =============================================================================
 # 関数定義
@@ -22,10 +23,11 @@ def get_box_size(zarr_path):
     """
     parameters.txt から box_size を読み取る関数
     """
-    param_path = os.path.join(zarr_path, "parameters.txt")
+
+    param_path = zarr_path / "parameters.txt"
     box_size = 16.0 # デフォルト値（読み込み失敗時用）
     
-    if os.path.exists(param_path):
+    if param_path.exists():
         with open(param_path, "r") as f:
             for line in f:
                 if "box_size" in line:
@@ -116,23 +118,26 @@ def plot_msd(msd_data, output_path):
 # =============================================================================
 
 if __name__ == "__main__":
-    try:
-        print(f"🚀 Analyzing: {TARGET_PATH}")
-        msds = []
-        for seed in glob.glob(TARGET_PATH):
-            msd_data = cargo_msd(seed)
-            msds.append(msd_data)
-            print(f"    ✅ {seed}: MSD shape {msd_data.shape}")
+    if not TARGET_SEEDS:
+        print("❌ No seed directories found. Check your PATH.")
+    else:
+        try:
+            print(f"🚀 Analyzing {len(TARGET_SEEDS)} seeds...")
+            msd_list = []
+            
+            for seed_path in TARGET_SEEDS:
+                msd_val = cargo_msd(seed_path)
+                msd_list.append(msd_val)
+            
+            # すべてのseedで Time と N_particles が同じであることを前提としてスタック
+            msds = np.array(msd_list) # Shape: (Seeds, Time, Particles)
+            print(f"📦 Aggregated Shape: {msds.shape}")
 
-        msds = np.array(msds)
-        print(f"📦 Total seeds processed: {msds.shape[0]}")
+            # Zarr形式で保存
+            zarr.save(str(OUTPUT_DATA), msds)
+            print(f"💾 MSD data saved to {OUTPUT_DATA}")
 
-        # 全seedのMSDを保存
-        output = zarr.open("analysis/data/cargo_msd_seeds.zarr", mode='w', shape=msds.shape, dtype=msds.dtype)
-        output[:] = msds
-        print(f"💾 MSD data saved to analysis/data/cargo_msd_seeds.zarr")
-        
-        print(f"📈 Average MSD shape: {msds.shape}")
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"❌ Error: {e}")
