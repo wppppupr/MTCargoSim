@@ -1,5 +1,4 @@
 import sys
-import os
 import shutil
 import numpy as np
 import zarr
@@ -7,7 +6,8 @@ import unittest
 from pathlib import Path
 
 # Add src to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+# analysis/tests/../src -> analysis/src
+sys.path.append(str(Path(__file__).resolve().parent.parent / 'src'))
 
 from center_order import calculate_center_polar_order
 
@@ -69,7 +69,9 @@ class TestCenterOrder(unittest.TestCase):
             shutil.rmtree(self.test_dir)
 
     def test_calculation(self):
-        polar_orders, counts = calculate_center_polar_order(str(self.test_dir), self.threshold)
+        # calculate_center_polar_order now accepts Path object or string.
+        # It internally converts to Path.
+        polar_orders, counts = calculate_center_polar_order(self.test_dir, np.array([self.threshold]))
 
         # Step 0
         # Particles 0 and 1 are within threshold.
@@ -79,15 +81,15 @@ class TestCenterOrder(unittest.TestCase):
         # P = sqrt(0.5^2 + 0.5^2) = sqrt(0.25 + 0.25) = sqrt(0.5) = 0.70710678
 
         self.assertEqual(len(polar_orders), 2)
-        self.assertAlmostEqual(counts[0], 2)
-        self.assertAlmostEqual(polar_orders[0], np.sqrt(0.5))
+        self.assertAlmostEqual(counts[0, 0], 2)
+        self.assertAlmostEqual(polar_orders[0, 0], np.sqrt(0.5))
 
         # Step 1
         # All 3 particles at center.
         # P = 1. Count = 3.
 
-        self.assertAlmostEqual(counts[1], 3)
-        self.assertAlmostEqual(polar_orders[1], 1.0)
+        self.assertAlmostEqual(counts[1, 0], 3)
+        self.assertAlmostEqual(polar_orders[1, 0], 1.0)
 
 if __name__ == '__main__':
     unittest.main()

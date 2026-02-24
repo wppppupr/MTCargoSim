@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 def get_params(zarr_path):
     """parameters.txt から box_size 等を読み取る"""
@@ -27,9 +27,9 @@ def get_params(zarr_path):
         "Dr": 0.01475
         }
     
-    param_path = os.path.join(zarr_path, "parameters.txt")
+    param_path = Path(zarr_path) / "parameters.txt"
     
-    if os.path.exists(param_path):
+    if param_path.exists():
         with open(param_path, "r") as f:
             for line in f:
                 try:

@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import argparse
 import zarr
+from pathlib import Path
 from matplotlib.animation import FuncAnimation
 
-def animate_onlyMT(data_folder, save_path = f"animation/MT", box_size=16):
+def animate_onlyMT(data_folder, save_path = "animation/MT", box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -16,12 +16,14 @@ def animate_onlyMT(data_folder, save_path = f"animation/MT", box_size=16):
 
 
         # 保存フォルダを作成
-        os.makedirs(save_path, exist_ok=True)
+        save_path = Path(save_path)
+        save_path.mkdir(parents=True, exist_ok=True)
+        data_folder = Path(data_folder)
 
         print(f"データ '{data_folder}' をロード中...")
         try:
-            positions_history = zarr.open_array(f"{data_folder}/positions", mode='r')
-            orientations_history = zarr.open_array(f"{data_folder}/orientations", mode='r')
+            positions_history = zarr.open_array(str(data_folder / "positions"), mode='r')
+            orientations_history = zarr.open_array(str(data_folder / "orientations"), mode='r')
             positions_history = positions_history[:].T
             orientations_history = orientations_history[:].T
         except FileNotFoundError:
@@ -59,11 +61,11 @@ def animate_onlyMT(data_folder, save_path = f"animation/MT", box_size=16):
         
         print(f"アニメーションを '{save_path}' に保存しています...")
         ani = FuncAnimation(fig, update, frames=len(positions_history), blit=True, interval=50)
-        ani.save(f"{save_path}/animation.mov", writer='ffmpeg', fps=10, dpi=100)
+        ani.save(str(save_path / "animation.mov"), writer='ffmpeg', fps=10, dpi=100)
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 
-def animate(data_folder, save_path = f"animation/MT", box_size=16):
+def animate(data_folder, save_path = "animation/MT", box_size=16):
         """
         保存された時系列データからアニメーションを生成し、動画ファイルとして保存します。
 
@@ -73,13 +75,15 @@ def animate(data_folder, save_path = f"animation/MT", box_size=16):
         """
 
         # 保存フォルダを作成
-        os.makedirs(save_path, exist_ok=True)
+        save_path = Path(save_path)
+        save_path.mkdir(parents=True, exist_ok=True)
+        data_folder = Path(data_folder)
 
         print(f"データ '{data_folder}/*.npy' をロード中...")
         try:
-            cargo_history = zarr.open_array(f"{data_folder}/cargo", mode='r')
-            positions_history = zarr.open_array(f"{data_folder}/positions", mode='r')
-            orientations_history = zarr.open_array(f"{data_folder}/orientations", mode='r')
+            cargo_history = zarr.open_array(str(data_folder / "cargo"), mode='r')
+            positions_history = zarr.open_array(str(data_folder / "positions"), mode='r')
+            orientations_history = zarr.open_array(str(data_folder / "orientations"), mode='r')
             cargo_history = cargo_history[:].T
             positions_history = positions_history[:].T
             orientations_history = orientations_history[:].T
@@ -136,7 +140,7 @@ def animate(data_folder, save_path = f"animation/MT", box_size=16):
         
         print(f"アニメーションを '{save_path}' に保存しています...")
         ani = FuncAnimation(fig, update, frames=len(positions_history), blit=True, interval=0.1)
-        ani.save(f"{save_path}/animation.mov", writer='ffmpeg', fps=10, dpi=100)
+        ani.save(str(save_path / "animation.mov"), writer='ffmpeg', fps=10, dpi=100)
         plt.close(fig)
         print(f"保存が完了しました: {save_path}")
 

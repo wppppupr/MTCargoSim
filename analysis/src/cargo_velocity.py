@@ -1,9 +1,8 @@
 import zarr
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 from tqdm import tqdm
-import glob
+from pathlib import Path
 
 # =============================================================================
 # 設定
@@ -20,9 +19,9 @@ shift = 1
 def get_params(zarr_path):
     """parameters.txt から box_size 等を読み取る"""
     params = {"box_size": 16.0}
-    param_path = os.path.join(zarr_path, "parameters.txt")
+    param_path = Path(zarr_path) / "parameters.txt"
     
-    if os.path.exists(param_path):
+    if param_path.exists():
         with open(param_path, "r") as f:
             for line in f:
                 try:
@@ -34,9 +33,10 @@ def get_params(zarr_path):
 
 def calculate_displacement(zarr_path, shift=1):
     # 1. データ読み込み
+    zarr_path = Path(zarr_path)
     print(f"📂 Loading: {zarr_path}")
-    cargo_path = os.path.join(zarr_path, "cargo")
-    cargo_zarr = zarr.open_array(cargo_path, mode='r')
+    cargo_path = zarr_path / "cargo"
+    cargo_zarr = zarr.open_array(str(cargo_path), mode='r')
     
     # Cargo位置 (Time, 1, 2) または (Time, 2)
     cargo = cargo_zarr[:]
@@ -81,12 +81,14 @@ def calculate_displacement(zarr_path, shift=1):
 
 if __name__ == "__main__":
     try:
-        for seed in glob.glob(TARGET_PATH):
+        target_path_obj = Path(TARGET_PATH)
+        # Assuming TARGET_PATH is like ".../seed*.zarr"
+        for seed in target_path_obj.parent.glob(target_path_obj.name):
             displacement = calculate_displacement(seed, shift)
 
-            displacement_path = os.path.join(seed, f"displacement_shift{shift}.zarr")
+            displacement_path = seed / f"displacement_shift{shift}.zarr"
             polar_output = zarr.open(
-                displacement_path,
+                str(displacement_path),
                 mode='w',
                 shape = displacement.shape,
                 dtype = displacement.dtype
