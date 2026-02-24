@@ -24,7 +24,7 @@ const cargo_radius = 0.315
 const start_seed = 1
 const end_seed = 201
 
-BASE_PATH = r"D:\Sasaki\MTCargoSim\MTC"
+BASE_PATH = "D:\\Sasaki\\MTCargoSim\\MTC"
 
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
