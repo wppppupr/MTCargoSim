@@ -1,8 +1,7 @@
 import zarr
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-import glob
+from pathlib import Path
 
 # =============================================================================
 # 設定
@@ -22,10 +21,10 @@ def get_box_size(zarr_path):
     """
     parameters.txt から box_size を読み取る関数
     """
-    param_path = os.path.join(zarr_path, "parameters.txt")
+    param_path = Path(zarr_path) / "parameters.txt"
     box_size = 16.0 # デフォルト値（読み込み失敗時用）
     
-    if os.path.exists(param_path):
+    if param_path.exists():
         with open(param_path, "r") as f:
             for line in f:
                 if "box_size" in line:
@@ -43,7 +42,8 @@ def cargo_msd(zarr_path):
     """
     # 1. データ読み込み
     # mode='r' で読み取り専用モード
-    cargo = zarr.open_array(f"{zarr_path}/cargo", mode='r')
+    zarr_path = Path(zarr_path)
+    cargo = zarr.open_array(str(zarr_path / "cargo"), mode='r')
 
     # 配列としてメモリにロード (Time, N_cargo, 2)
     # 形状: [時間, 粒子数, 座標(xy)]
@@ -119,7 +119,17 @@ if __name__ == "__main__":
     try:
         print(f"🚀 Analyzing: {TARGET_PATH}")
         msds = []
-        for seed in glob.glob(TARGET_PATH):
+        target_path_obj = Path(TARGET_PATH)
+        # glob.glob(str) where str is "path/to/*.zarr"
+        # pathlib equivalent: Path("path/to").glob("*.zarr")
+
+        # We need to handle if TARGET_PATH is just a directory or a pattern
+        # The original code used glob.glob(TARGET_PATH) with TARGET_PATH=".../seed*.zarr"
+        # So it is a pattern.
+
+        # If the user provides a pattern like ".../seed*.zarr", target_path_obj.name is "seed*.zarr" and parent is the dir.
+
+        for seed in target_path_obj.parent.glob(target_path_obj.name):
             msd_data = cargo_msd(seed)
             msds.append(msd_data)
             print(f"    ✅ {seed}: MSD shape {msd_data.shape}")
@@ -128,9 +138,12 @@ if __name__ == "__main__":
         print(f"📦 Total seeds processed: {msds.shape[0]}")
 
         # 全seedのMSDを保存
-        output = zarr.open("analysis/data/cargo_msd_seeds.zarr", mode='w', shape=msds.shape, dtype=msds.dtype)
+        output_zarr_path = Path("analysis/data/cargo_msd_seeds.zarr")
+        output_zarr_path.parent.mkdir(parents=True, exist_ok=True)
+
+        output = zarr.open(str(output_zarr_path), mode='w', shape=msds.shape, dtype=msds.dtype)
         output[:] = msds
-        print(f"💾 MSD data saved to analysis/data/cargo_msd_seeds.zarr")
+        print(f"💾 MSD data saved to {output_zarr_path}")
         
         print(f"📈 Average MSD shape: {msds.shape}")
 

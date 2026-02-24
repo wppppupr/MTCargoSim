@@ -1,7 +1,6 @@
 import numpy as np
-import glob
-import os
 import zarr
+from pathlib import Path
 
 def orderparameter(orientation):
     cos = np.cos(orientation)
@@ -24,9 +23,11 @@ def polarorderparameter(orientation):
 
 def ensembleS(folder):
     S_list = []
-
-    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr/nematic_order_param.zarr"))):
-        S = zarr.open_array(f, mode='r')
+    folder = Path(folder)
+    # Match pattern: seed*.zarr/nematic_order_param.zarr
+    # Path.glob supports this.
+    for f in sorted(folder.glob("seed*.zarr/nematic_order_param.zarr")):
+        S = zarr.open_array(str(f), mode='r')
         S = S[:]
         S_list.append(S)
 
@@ -34,9 +35,9 @@ def ensembleS(folder):
 
 def ensembleP(folder):
     P_list = []
-
-    for f in sorted(glob.glob(os.path.join(folder, "seed*.zarr/polar_order_param.zarr"))):
-        P = zarr.open_array(f, mode='r')
+    folder = Path(folder)
+    for f in sorted(folder.glob("seed*.zarr/polar_order_param.zarr")):
+        P = zarr.open_array(str(f), mode='r')
         P = P[:]
         P_list.append(P)
 
@@ -45,24 +46,27 @@ def ensembleP(folder):
 if __name__ == "__main__":
 
     # 実行パスはプロジェクトルートを想定して相対パスを指定
-    folder = "/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5"
+    folder = Path("/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5")
     save_folder = folder
 
     print(f"Reading seeds from: {folder}")
-    for f in glob.glob(os.path.join(folder, "seed*.zarr")):
-        nematic_path = os.path.join(f, "nematic_order_param.zarr")
-        polar_path = os.path.join(f, "polar_order_param.zarr")
-        if os.path.exists(nematic_path) and os.path.exists(polar_path):
+    for f in folder.glob("seed*.zarr"):
+        nematic_path = f / "nematic_order_param.zarr"
+        polar_path = f / "polar_order_param.zarr"
+
+        if nematic_path.exists() and polar_path.exists():
                 continue
         print(f"calculate {f}")
-        data = zarr.open_array(os.path.join(f, "orientations"), mode='r')
+
+        orientations_path = f / "orientations"
+        data = zarr.open_array(str(orientations_path), mode='r')
         orientations = data[:].T
         S = orderparameter(orientations)
-        nematic_zarr = zarr.open(nematic_path, mode = 'w', shape=S.shape, dtype = S.dtype)
+        nematic_zarr = zarr.open(str(nematic_path), mode = 'w', shape=S.shape, dtype = S.dtype)
         nematic_zarr[:] = S
         print(f"    Order parameter S shape: {S.shape}")
         P = polarorderparameter(orientations)
-        polar_zarr = zarr.open(polar_path, mode = 'w', shape = P.shape, dtype = P.dtype)
+        polar_zarr = zarr.open(str(polar_path), mode = 'w', shape = P.shape, dtype = P.dtype)
         polar_zarr[:] = P
         print(f"    Polar Order parameter P shape: {P.shape}")
 

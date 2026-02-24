@@ -1,9 +1,8 @@
 import zarr
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 from tqdm import tqdm
-import glob
+from pathlib import Path
 from get_params import get_params
 import argparse
 
@@ -19,13 +18,15 @@ OUTPUT_PLOT = "local_polar_order.png"
 
 def calculate_local_polar_order(zarr_path, thresholds):
     # 1. データ読み込み
+    zarr_path = Path(zarr_path)
     print(f"📂 Loading: {zarr_path}")
-    positions_path = os.path.join(zarr_path, "positions")
-    orientations_path = os.path.join(zarr_path, "orientations")
-    cargo_path = os.path.join(zarr_path, "cargo")
-    positions_zarr = zarr.open_array(positions_path, mode='r')
-    orientations_zarr = zarr.open_array(orientations_path, mode='r')
-    cargo_zarr = zarr.open_array(cargo_path, mode='r')
+    positions_path = zarr_path / "positions"
+    orientations_path = zarr_path / "orientations"
+    cargo_path = zarr_path / "cargo"
+
+    positions_zarr = zarr.open_array(str(positions_path), mode='r')
+    orientations_zarr = zarr.open_array(str(orientations_path), mode='r')
+    cargo_zarr = zarr.open_array(str(cargo_path), mode='r')
     
     positions = positions_zarr[:]      
     orientations = orientations_zarr[:] 
@@ -124,23 +125,26 @@ if __name__ == "__main__":
         thresholds = np.array([args.threshold])
 
     try:
-        seeds = glob.glob(args.target_path)
+        target_pattern = Path(args.target_path)
+        # Handle wildcard in pattern by checking parent directory
+        seeds = list(target_pattern.parent.glob(target_pattern.name))
+
         if not seeds:
-            print(f"⚠️ No files found matching pattern: {args.target_path}")
+            print(f"⚠️ No files found matching pattern: {target_pattern}")
 
         for seed in seeds:
-            polar_path = os.path.join(seed, "local_polar.zarr")
-            counts_path = os.path.join(seed, "counts.zarr")
-            thresholds_path = os.path.join(seed, "thresholds.zarr")
+            polar_path = seed / "local_polar.zarr"
+            counts_path = seed / "counts.zarr"
+            thresholds_path = seed / "thresholds.zarr"
 
-            if os.path.exists(polar_path):
+            if polar_path.exists():
                  print(f"♻️ Overwriting existing output in {seed}")
 
             polar_orders, counts = calculate_local_polar_order(seed, thresholds)
 
             # polar度とカウントの保存
             polar_output = zarr.open(
-                polar_path,
+                str(polar_path),
                 mode='w',
                 shape = polar_orders.shape,
                 dtype = polar_orders.dtype
@@ -148,7 +152,7 @@ if __name__ == "__main__":
             polar_output[:] = polar_orders
 
             counts_output = zarr.open(
-                counts_path,
+                str(counts_path),
                 mode = 'w',
                 shape = counts.shape,
                 dtype = counts.dtype
@@ -157,7 +161,7 @@ if __name__ == "__main__":
 
             # Save thresholds
             thresholds_output = zarr.open(
-                thresholds_path,
+                str(thresholds_path),
                 mode = 'w',
                 shape = thresholds.shape,
                 dtype = thresholds.dtype

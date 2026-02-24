@@ -1,9 +1,8 @@
 import zarr
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 from tqdm import tqdm
-import glob
+from pathlib import Path
 from get_params import get_params
 
 # =============================================================================
@@ -21,11 +20,13 @@ BIN_WIDTH = 0.1 # ヒストグラムのビンの幅
 
 def calculate_rdf(zarr_path, max_r, bin_width):
     # 1. データ読み込み
+    zarr_path = Path(zarr_path)
     print(f"📂 Loading: {zarr_path}")
-    positions_path = os.path.join(zarr_path, "positions")
-    cargo_path = os.path.join(zarr_path, "cargo")
-    positions_zarr = zarr.open_array(positions_path, mode='r')
-    cargo_zarr = zarr.open_array(cargo_path, mode='r')
+    positions_path = zarr_path / "positions"
+    cargo_path = zarr_path / "cargo"
+    # zarr.open_array accepts Path objects or string
+    positions_zarr = zarr.open_array(str(positions_path), mode='r')
+    cargo_zarr = zarr.open_array(str(cargo_path), mode='r')
     
     positions = positions_zarr[:]      
 
@@ -90,14 +91,14 @@ def calculate_rdf(zarr_path, max_r, bin_width):
 
 if __name__ == "__main__":
     try:
-        path = os.path.join(TARGET_PATH, "seed*.zarr")
-        for seed in glob.glob(path):
-            RDF_path=os.path.join(seed, "RDF.zarr")
-            if os.path.exists(RDF_path):
+        target_dir = Path(TARGET_PATH)
+        for seed in target_dir.glob("seed*.zarr"):
+            RDF_path = seed / "RDF.zarr"
+            if RDF_path.exists():
                 continue
             r, g_r = calculate_rdf(seed, MAX_R, BIN_WIDTH)
             RDF = np.array([r, g_r])
-            RDF_zarr = zarr.open(RDF_path, mode='w', shape=RDF.shape, dtype = RDF.dtype)
+            RDF_zarr = zarr.open(str(RDF_path), mode='w', shape=RDF.shape, dtype = RDF.dtype)
             RDF_zarr[:] = RDF
 
     except Exception as e:
