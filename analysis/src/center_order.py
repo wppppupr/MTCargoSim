@@ -8,7 +8,7 @@ import argparse
 # =============================================================================
 # 設定
 # =============================================================================
-DEFAULT_TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed*.zarr'
+DEFAULT_TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59/seed*.zarr'
 
 # =============================================================================
 # 関数定義
