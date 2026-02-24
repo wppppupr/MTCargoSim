@@ -24,6 +24,8 @@ const cargo_radius = 0.315
 const start_seed = 1
 const end_seed = 201
 
+BASE_PATH = r"D:\Sasaki\MTCargoSim\MTC"
+
 # 全タスクリストを作成 (A: 0.5, Seed: 1~100)
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
@@ -63,7 +65,7 @@ function main()
                     cargo_radius = cargo_radius
                 )
 
-                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT)
+                MTC.run_simulation(params, WARMUP, STEPS; save_interval = SAVE_INT, base_path=BASE_PATH)
 
                 # メモリ解放
                 GC.gc()
