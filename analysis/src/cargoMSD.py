@@ -2,12 +2,18 @@ import zarr
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to sys.path to import data_root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from data_root import data_root
 
 # =============================================================================
 # 設定
 # =============================================================================
 # 解析したいデータの親ディレクトリ
-BASE_PATH = Path(r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59')
+BASE_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_cargo_radius0.59'
 # seed*.zarr にマッチするパスのリストを取得
 TARGET_SEEDS = sorted(list(BASE_PATH.glob('seed*.zarr')))
 

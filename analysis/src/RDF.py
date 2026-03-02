@@ -4,11 +4,17 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pathlib import Path
 from get_params import get_params
+import sys
+import os
+
+# Add the project root to sys.path to import data_root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from data_root import data_root
 
 # =============================================================================
 # 設定
 # =============================================================================
-TARGET_PATH = r"/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5"
+TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5'
 
 # RDFの計算設定
 MAX_R = 8.0     # 計算する最大距離 (Box size / 2 が目安)
