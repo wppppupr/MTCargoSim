@@ -9,7 +9,7 @@ import argparse
 # =============================================================================
 # 設定
 # =============================================================================
-DEFAULT_TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59/seed*.zarr'
+DEFAULT_TARGET_PATH = r"/media/sasaki/data/Sasaki/MTCargoSim/MTC/P0.5_A0.5_kMT0.0904_kcargo0.0226_radius5.0/seed*.zarr"#r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59/seed*.zarr'
 OUTPUT_PLOT = "local_polar_order.png"
 
 # =============================================================================

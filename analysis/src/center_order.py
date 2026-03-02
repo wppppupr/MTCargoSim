@@ -5,10 +5,20 @@ from pathlib import Path
 from get_params import get_params
 import argparse
 
+import sys
+import os
+
+sys.path.append(os.path.abspath(".."))
+
+#from data_root import data_root
+
 # =============================================================================
 # 設定
 # =============================================================================
-DEFAULT_TARGET_PATH = r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59/seed*.zarr'
+
+
+
+DEFAULT_TARGET_PATH = r"/media/sasaki/data/Sasaki/MTCargoSim/MTC/P0.5_A0.5_kMT0.0904_kcargo0.0226_radius3.6/seed*.zarr" #r'/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5_cargo_radius0.59/seed*.zarr'
 
 # =============================================================================
 # 関数定義
