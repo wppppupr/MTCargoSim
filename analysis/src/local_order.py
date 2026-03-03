@@ -117,8 +117,8 @@ def calculate_local_polar_order(zarr_path, thresholds):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate local polar order parameter around cargo.")
     parser.add_argument("target_path", type=str, nargs='?', default=DEFAULT_TARGET_PATH, help="Path pattern for zarr files (e.g. 'data/seed*.zarr')")
-    parser.add_argument("--min", type=float, help="Minimum threshold for interaction range")
-    parser.add_argument("--max", type=float, help="Maximum threshold for interaction range")
+    parser.add_argument("--min", type=float, default=0.0, help="Minimum threshold for interaction range")
+    parser.add_argument("--max", type=float, default=1.0, help="Maximum threshold for interaction range")
     parser.add_argument("--step", type=float, default=0.01, help="Step size for threshold range")
     parser.add_argument("--threshold", type=float, default=0.28, help="Single threshold value (used if min/max not specified)")
 
