@@ -1,6 +1,12 @@
 import numpy as np
 import zarr
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to sys.path to import data_root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from data_root import data_root
 
 def orderparameter(orientation):
     cos = np.cos(orientation)
@@ -46,7 +52,7 @@ def ensembleP(folder):
 if __name__ == "__main__":
 
     # 実行パスはプロジェクトルートを想定して相対パスを指定
-    folder = Path("/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5")
+    folder = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5'
     save_folder = folder
 
     print(f"Reading seeds from: {folder}")

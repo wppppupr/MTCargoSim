@@ -4,6 +4,12 @@ import argparse
 import zarr
 from pathlib import Path
 from matplotlib.animation import FuncAnimation
+import sys
+import os
+
+# Add the project root to sys.path to import data_root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from data_root import data_root
 
 def animate_onlyMT(data_folder, save_path = "animation/MT", box_size=16):
         """
@@ -145,8 +151,8 @@ def animate(data_folder, save_path = "animation/MT", box_size=16):
         print(f"保存が完了しました: {save_path}")
 
 if __name__ == "__main__":
-    data = '/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed1.zarr'
-    save_path = '/Volumes/My Passport/Sasaki/MTCargoSim/MTC/P0.5_A0.5/seed1.zarr'
+    data = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5' / 'seed1.zarr'
+    save_path = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5' / 'seed1.zarr'
 
     plt.style.use('my_style.mplstyle')
 
