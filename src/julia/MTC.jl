@@ -1,65 +1,54 @@
 module MTC
 
 # --- パッケージの読み込み ---
-using Zarr            # NPZの代わりにZarrを使用
+using Zarr
 using LinearAlgebra
 using Distributions
 using ProgressMeter
 using Random
 
-# 外部からアクセス可能な関数・型をエクスポート
 export Parameters, Datas, run_simulation, MT_simulation
 
-"""
-シミュレーションの全パラメータを保持するstruct。
-"""
 @kwdef struct Parameters
-    # --- ユーザーが指定する基本パラメータ ---
-    packing_fraction::Float64           # 密度 (必須)
-    A::Float64                          # 整列相互作用の強さ (必須)
-    dt::Float64                  # タイムステップ
-    seed::Int                           # 乱数シード
-    cargo_radius::Float64        # 荷物の半径 [um]　デフォルトは 0.59
+    packing_fraction::Float64           
+    A::Float64                          
+    dt::Float64                  
+    seed::Int                           
+    cargo_radius::Float64        
     
-    # --- デフォルト値を持つ基本パラメータ ---
-    
-    d_MT::Float64 = 0.025               # 微小管の直径 [um]
-    r_int::Float64 = 0.1                # 微小管の相互作用半径 [um]
-    box_size::Float64 = 16.0            # シミュレーションボックスのサイズ
-    v_MT::Float64 = 0.5                 # 微小管の速度 [um/s]
-    warmup_dt::Float64 = 0.1            # ウォームアップステップのタイムステップ
-    Dr_exp::Float64 = 0.0125            # 実験から得られた微小管の回転拡散 [rad/s]
+    d_MT::Float64 = 0.025               
+    r_int::Float64 = 0.1                
+    box_size::Float64 = 16.0            
+    v_MT::Float64 = 0.5                 
+    warmup_dt::Float64 = 0.1            
+    Dr_exp::Float64 = 0.0125            
     k_cargo::Float64 = 2.26e-2
-    k_MT::Float64 = 9.04e-2             # 微小管の速度摩擦係数
-    dna::Float64 = 0.01                 # DNAの長さ [µm]
-    f::Float64 = 1.13e-2                # DNAの力 [µN]
+    k_MT::Float64 = 9.04e-2             
+    dna::Float64 = 0.01                 
+    f::Float64 = 1.13e-2                
 
-    # --- 計算によって決まる派生パラメータ ---
-    tau::Float64                 # 時間スケール [t]
+    tau::Float64                 
     num_particles::Int
     interaction_radius::Float64
-    r_a::Float64                        # 貨物と微小管の相互作用範囲
+    r_a::Float64                        
     r_dna::Float64
+    dna_cut::Float64
+    r_dna_cut::Float64
     dna_l::Float64
-    epsilon::Float64                    # DNAのエネルギースケール [µJ]
-    Dr::Float64                         # 無次元化した回転拡散係数
+    epsilon::Float64                    
+    Dr::Float64                         
 end
 
-"""
-Parametersオブジェクトを生成するための外部コンストラクタ関数。
-"""
 function Parameters(;
     packing_fraction::Float64,
     A::Float64,
     dt::Float64,
     seed::Int,
     cargo_radius::Float64,
-    
-    # オプション引数
     d_MT::Float64 = 0.025,
     r_int::Float64 = 0.1,
     box_size::Float64 = 16.0,
-    v_MT::Float64 = 0.5,                 # 微小管の速度 [um/s]
+    v_MT::Float64 = 0.5,
     warmup_dt::Float64 = 0.1,
     Dr_exp::Float64 = 0.0125,
     k_cargo::Float64 = 2.26e-2,
@@ -67,12 +56,13 @@ function Parameters(;
     dna::Float64 = 0.01,
     f::Float64 = 1.13e-2
 )
-    # 派生パラメータ計算
     tau = cargo_radius/v_MT
     num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
     interaction_radius = r_int / cargo_radius
     r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
     r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / cargo_radius
+    dna_cut = 2.0 * dna
+    r_dna_cut = sqrt((d_MT+2*dna_cut)*(2*cargo_radius+2*dna_cut))/(1+(2*dna_cut+d_MT/2)/cargo_radius) / cargo_radius
     dna_l = dna / cargo_radius
     epsilon = sqrt(exp(1)/2) * r_a * f
     Dr = tau * Dr_exp
@@ -84,21 +74,21 @@ function Parameters(;
         k_MT, dna, f, tau,
         num_particles,
         interaction_radius,
-        r_a, r_dna,
+        r_a, r_dna, dna_cut, r_dna_cut,
         dna_l, epsilon, Dr
     )
 end
 
 mutable struct Datas
-    positions::Matrix{Float64}         # 2 x num_particles
-    orientations::Vector{Float64}      # num_particles
-    cargo_positions::Matrix{Float64}   # 1 x 2
+    positions::Matrix{Float64}         
+    orientations::Vector{Float64}      
+    cargo_positions::Matrix{Float64}   
 end
 
 # --- ヘルパー関数 ---
 
 function dna_force(epsilon, r, r_a)
-    return -2 .* epsilon .* r .* exp.(-(r.^2)./(r_a^2)) ./r_a^2 
+    return -2 * epsilon * r * exp(-(r^2)/(r_a^2)) / r_a^2 
 end
 
 function initialize(params::Parameters)
@@ -114,10 +104,42 @@ function initialize(params::Parameters)
     return Datas(positions, orientations, cargo_positions)
 end
 
+# In-placeでメモリアロケーションを防ぐ
 function apply_periodic_boundary!(positions::Matrix{Float64}, cargo_positions::Matrix{Float64}, box_size::Float64)
-    positions .= mod.(positions, box_size)
-    cargo_positions .= mod.(cargo_positions, box_size)
+    @inbounds for i in axes(positions, 2)
+        positions[1, i] = mod(positions[1, i], box_size)
+        positions[2, i] = mod(positions[2, i], box_size)
+    end
+    cargo_positions[1] = mod(cargo_positions[1], box_size)
+    cargo_positions[2] = mod(cargo_positions[2], box_size)
 end
+
+# --- Cell List の構築 ---
+function build_cell_list(positions::Matrix{Float64}, box_size::Float64, r_cut::Float64)
+    N = size(positions, 2)
+    n_cells = max(1, floor(Int, box_size / r_cut))
+    cell_size = box_size / n_cells
+    
+    head = fill(0, n_cells * n_cells)
+    list = fill(0, N)
+    
+    @inbounds for i in 1:N
+        cx = floor(Int, positions[1, i] / cell_size)
+        cy = floor(Int, positions[2, i] / cell_size)
+        
+        cx = clamp(cx, 0, n_cells - 1)
+        cy = clamp(cy, 0, n_cells - 1)
+        
+        cell_idx = cx + cy * n_cells + 1
+        
+        list[i] = head[cell_idx]
+        head[cell_idx] = i
+    end
+    
+    return n_cells, cell_size, head, list
+end
+
+# --- ステップ処理 ---
 
 function step!(data::Datas, params::Parameters)
     positions = data.positions
@@ -130,29 +152,45 @@ function step!(data::Datas, params::Parameters)
     Dr = params.Dr
     N = params.num_particles
     
+    n_cells, cell_size, head, list = build_cell_list(positions, box_size, r_cut)
+    
     alignment_term = zeros(N)
+    r_cut_sq = r_cut^2
 
     @inbounds for i in 1:N
         x_i = positions[1,i]
         y_i = positions[2,i]
+        
+        cx = floor(Int, x_i / cell_size)
+        cy = floor(Int, y_i / cell_size)
+        cx = clamp(cx, 0, n_cells - 1)
+        cy = clamp(cy, 0, n_cells - 1)
+        
         sum_sin = 0.0
         n_neighbors = 0
+        
+        # 近傍の3x3セルのみを探索
+        for dcx in -1:1, dcy in -1:1
+            ccx = mod(cx + dcx, n_cells)
+            ccy = mod(cy + dcy, n_cells)
+            cell_idx = ccx + ccy * n_cells + 1
+            
+            j = head[cell_idx]
+            while j != 0
+                if i != j
+                    dx = x_i - positions[1,j]
+                    dy = y_i - positions[2,j]
 
-        @inbounds for j in 1:N
-            if i == j; continue; end
-            dx = x_i - positions[1,j]
-            dy = y_i - positions[2,j]
+                    dx -= round(dx / box_size) * box_size
+                    dy -= round(dy / box_size) * box_size
 
-            # 周期境界補正
-            dx -= round(dx / box_size) * box_size
-            dy -= round(dy / box_size) * box_size
-
-            r2 = dx^2 + dy^2
-
-            if r2 < r_cut^2
-                n_neighbors += 1
-                dtheta = orientations[j] - orientations[i]
-                sum_sin += sin(2*dtheta)
+                    if dx^2 + dy^2 < r_cut_sq
+                        n_neighbors += 1
+                        dtheta = orientations[j] - orientations[i]
+                        sum_sin += sin(2*dtheta)
+                    end
+                end
+                j = list[j]
             end
         end
 
@@ -161,13 +199,14 @@ function step!(data::Datas, params::Parameters)
         end
     end
 
-    # 向きと位置の更新
-    noise = randn(N) .* sqrt(2 * Dr * tau .* dt)
-    orientations .+= alignment_term .* dt .+ noise
-    orientations .= mod.(orientations, 2π)
-
-    positions[1, :] .+= cos.(orientations) .* dt
-    positions[2, :] .+= sin.(orientations) .* dt
+    # 向きと位置の更新 (In-place)
+    noise_std = sqrt(2 * Dr * tau * dt)
+    @inbounds for i in 1:N
+        noise = randn() * noise_std
+        orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
+        positions[1, i] += cos(orientations[i]) * dt
+        positions[2, i] += sin(orientations[i]) * dt
+    end
 end
 
 function transport_step!(data::Datas, params::Parameters)
@@ -177,6 +216,7 @@ function transport_step!(data::Datas, params::Parameters)
     box_size = params.box_size
     r_cut = params.interaction_radius
     r_a = params.r_a
+    r_dna_cut = params.r_dna_cut  # 力のカットオフとして使用
     A = params.A
     dt = params.dt
     tau = params.tau
@@ -186,28 +226,45 @@ function transport_step!(data::Datas, params::Parameters)
     Dr = params.Dr
     N = params.num_particles
     
-    alignment_term = zeros(N)
+    n_cells, cell_size, head, list = build_cell_list(positions, box_size, r_cut)
 
+    alignment_term = zeros(N)
+    r_dna_cut_sq = r_dna_cut^2
+
+    # --- 1. 微小管同士の整列 (Cell List) ---
     @inbounds for i in 1:N
         x_i = positions[1,i]
         y_i = positions[2,i]
+        
+        cx = floor(Int, x_i / cell_size)
+        cy = floor(Int, y_i / cell_size)
+        cx = clamp(cx, 0, n_cells - 1)
+        cy = clamp(cy, 0, n_cells - 1)
+        
         sum_sin = 0.0
         n_neighbors = 0
+        
+        for dcx in -1:1, dcy in -1:1
+            ccx = mod(cx + dcx, n_cells)
+            ccy = mod(cy + dcy, n_cells)
+            cell_idx = ccx + ccy * n_cells + 1
+            
+            j = head[cell_idx]
+            while j != 0
+                if i != j
+                    dx = x_i - positions[1,j]
+                    dy = y_i - positions[2,j]
 
-        @inbounds for j in 1:N
-            if i == j; continue; end
-            dx = x_i - positions[1,j]
-            dy = y_i - positions[2,j]
+                    dx -= round(dx / box_size) * box_size
+                    dy -= round(dy / box_size) * box_size
 
-            dx -= round(dx / box_size) * box_size
-            dy -= round(dy / box_size) * box_size
-
-            r2 = dx^2 + dy^2
-
-            if r2 < r_cut^2
-                n_neighbors += 1
-                dtheta = orientations[j] - orientations[i]
-                sum_sin += sin(2*dtheta)
+                    if dx^2 + dy^2 < r_cut_sq
+                        n_neighbors += 1
+                        dtheta = orientations[j] - orientations[i]
+                        sum_sin += sin(2*dtheta)
+                    end
+                end
+                j = list[j]
             end
         end
 
@@ -216,37 +273,56 @@ function transport_step!(data::Datas, params::Parameters)
         end
     end
 
-    # 貨物との相互作用
+    # --- 2. 貨物との相互作用 (力のカットオフ適用) ---
     x_cargo = cargo_positions[1]
     y_cargo = cargo_positions[2]
 
-    force_cargo = zeros((2, N))
-    dx = x_cargo .- positions[1,:]
-    dy = y_cargo .- positions[2,:]
+    force_cargo_x = zeros(N)
+    force_cargo_y = zeros(N)
+    sum_fc_x = 0.0
+    sum_fc_y = 0.0
 
-    dx -= round.(dx ./ box_size) .* box_size
-    dy -= round.(dy ./ box_size) .* box_size
+    @inbounds for i in 1:N
+        dx = x_cargo - positions[1,i]
+        dy = y_cargo - positions[2,i]
 
-    r2 = dx.^2 + dy.^2
-    r = sqrt.(r2)
+        dx -= round(dx / box_size) * box_size
+        dy -= round(dy / box_size) * box_size
 
-    f = dna_force.(epsilon, r, r_a)
+        r2 = dx^2 + dy^2
 
-    force_cargo[1,:] += f .* dx ./ r
-    force_cargo[2,:] += f .* dy ./ r
+        # --- 力のカットオフ：r_dnaの距離内でのみ計算 ---
+        if r2 < r_dna_cut_sq
+            r = sqrt(r2)
+            f_val = dna_force(epsilon, r, r_a)
+            
+            fc_x = f_val * dx / r
+            fc_y = f_val * dy / r
+            
+            force_cargo_x[i] = fc_x
+            force_cargo_y[i] = fc_y
+            
+            sum_fc_x += fc_x
+            sum_fc_y += fc_y
+        end
+    end
     
-    # 更新
-    noise = randn(N) .* sqrt(2 * Dr * tau .* dt)
-    orientations .+= alignment_term .* dt .+ noise
-    orientations .= mod.(orientations, 2π)
+    # --- 3. 更新 (In-place) ---
+    noise_std = sqrt(2 * Dr * tau * dt)
+    @inbounds for i in 1:N
+        noise = randn() * noise_std
+        orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
 
-    positions[1, :] .+= cos.(orientations) .* dt - (tau/k_MT) .* force_cargo[1, :] .* dt
-    positions[2, :] .+= sin.(orientations) .* dt - (tau/k_MT) .* force_cargo[2, :] .* dt
-    cargo_positions .+= (tau/k_cargo).* reshape(sum(force_cargo, dims=2), 1, 2) .* dt
+        positions[1, i] += cos(orientations[i]) * dt - (tau/k_MT) * force_cargo_x[i] * dt
+        positions[2, i] += sin(orientations[i]) * dt - (tau/k_MT) * force_cargo_y[i] * dt
+    end
+    
+    cargo_positions[1] += (tau/k_cargo) * sum_fc_x * dt
+    cargo_positions[2] += (tau/k_cargo) * sum_fc_y * dt
 end
 
-
-# --- メインシミュレーション関数 (Zarr対応版) ---
+end
+# --- メインシミュレーション関数 ---
 
 function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100, base_path = "data")
     data = initialize(params)
@@ -375,6 +451,4 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
 
     # メモリ解放
     return nothing
-end
-
 end

@@ -12,8 +12,10 @@ println("win 用テストを開始します...")
 # 1. パラメータの設定 (軽く動かすための設定)
 params = Parameters(
     packing_fraction = 0.5,
-    A = 0.5,
-    seed = 999
+                    A = 0.5,
+                    dt = 0.01,
+                    seed = 2000,
+                    cargo_radius = 0.59
 )
 
 # 2. 保存先の指定 (Mac用に書き換え)
