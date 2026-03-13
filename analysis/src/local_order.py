@@ -1,21 +1,21 @@
 import zarr
 import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from pathlib import Path
-from get_params import get_params
 import argparse
 import sys
 import os
+from tqdm import tqdm
+from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Add the project root to sys.path to import data_root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from data_root import data_root
+from get_params import get_params
 
 # =============================================================================
 # 設定
 # =============================================================================
-DEFAULT_TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius5.0' / 'seed*.zarr'
+DEFAULT_TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius0.59' / 'seed*.zarr'
 OUTPUT_PLOT = "local_polar_order.png"
 
 # =============================================================================
@@ -23,92 +23,95 @@ OUTPUT_PLOT = "local_polar_order.png"
 # =============================================================================
 
 def calculate_local_polar_order(zarr_path, thresholds):
-    # 1. データ読み込み
     zarr_path = Path(zarr_path)
-    print(f"📂 Loading: {zarr_path}")
+    
     positions_path = zarr_path / "positions"
     orientations_path = zarr_path / "orientations"
     cargo_path = zarr_path / "cargo"
 
-    positions_zarr = zarr.open_array(str(positions_path), mode='r')
-    orientations_zarr = zarr.open_array(str(orientations_path), mode='r')
-    cargo_zarr = zarr.open_array(str(cargo_path), mode='r')
+    # --- 高速化ポイント1: メモリの連続化 ---
+    # np.ascontiguousarrayを使うことで、CPUキャッシュ効率を劇的に改善します
+    positions_zarr = zarr.open_array(str(positions_path), mode='r')[:]
+    orientations_zarr = zarr.open_array(str(orientations_path), mode='r')[:]
+    cargo_zarr = zarr.open_array(str(cargo_path), mode='r')[:]
     
-    positions = positions_zarr[:]      
-    orientations = orientations_zarr[:] 
-
-    positions = positions.T         # (Time, N, 2)
-    orientations = orientations.T   # (Time, N) -> 角度theta
+    positions = np.ascontiguousarray(positions_zarr.T)      # (Time, N, 2)
+    orientations = np.ascontiguousarray(orientations_zarr.T) # (Time, N)
     
-    # Cargo位置 (Time, 1, 2) または (Time, 2)
-    cargo = cargo_zarr[:]
-    if cargo.ndim == 3:
-        cargo = cargo[:, 0, :]
-
-    cargo = cargo.T
+    if cargo_zarr.ndim == 3:
+        cargo = cargo_zarr[:, 0, :]
+    else:
+        cargo = cargo_zarr
+    cargo = np.ascontiguousarray(cargo.T) # (Time, 2)
         
     params = get_params(zarr_path)
     L = params["box_size"]
     
     num_steps, num_particles = orientations.shape
     num_thresholds = len(thresholds)
-    print(f"📦 Box Size: {L}, Thresholds: {thresholds}")
 
     local_polar_orders = np.zeros((num_steps, num_thresholds))
-    interacting_counts = np.zeros((num_steps, num_thresholds))
+    interacting_counts = np.zeros((num_steps, num_thresholds), dtype=int)
 
     thresholds_sq = thresholds**2
 
-    # 2. ステップごとに計算
-    print("🧮 Calculating local polar order...")
-    for t in tqdm(range(num_steps)):
-        # 現在の座標と配向
-        pos_t = positions[t]   # (N, 2)
-        ori_t = orientations[t] # (N,)
-        cargo_t = cargo[t]     # (2,)
-        
-        # --- 距離計算 (PBC考慮) ---
-        # Cargoと全粒子の差分ベクトル
-        delta = pos_t - cargo_t # Broadcasting: (N, 2) - (2,)
-        
-        # 周期境界補正 (Nearest Image)
-        delta -= np.round(delta / L) * L
-        
-        # 二乗距離
-        dist_sq = np.sum(delta**2, axis=1) # (N,)
-        
-        # --- 近傍粒子の抽出 (Vectorized over thresholds) ---
-        # mask shape: (N, M) where M is num_thresholds
-        mask = dist_sq[:, np.newaxis] < thresholds_sq[np.newaxis, :]
+    # --- 高速化ポイント2: 事前計算 ---
+    cos_all = np.cos(orientations)
+    sin_all = np.sin(orientations)
 
-        # counts shape: (M,)
-        counts = np.sum(mask, axis=0)
+    # 内部ループのtqdmは並列化時に表示が崩れるため削除（メインプロセスで進捗管理します）
+    for t in range(num_steps):
+        pos_t = positions[t]   
+        cargo_t = cargo[t]     
+        
+        delta = pos_t - cargo_t 
+        delta -= np.round(delta / L) * L
+        dist_sq = np.sum(delta**2, axis=1) 
+        
+        # --- 高速化ポイント3: ソートと累積和 (Cumsum) による $O(N \log N)$ アルゴリズム ---
+        # 巨大な真偽値行列を作る代わりに、距離順に並べ替えて累積和を取ります
+        sort_idx = np.argsort(dist_sq)
+        sorted_dist_sq = dist_sq[sort_idx]
+        
+        # 距離が近い順にcos, sinの累積和を計算
+        cumsum_cos = np.cumsum(cos_all[t, sort_idx])
+        cumsum_sin = np.cumsum(sin_all[t, sort_idx])
+        
+        # 各閾値の内側に何個の粒子が含まれるかを二分探索で一括取得
+        counts = np.searchsorted(sorted_dist_sq, thresholds_sq, side='left')
         interacting_counts[t] = counts
 
-        # Calculate sums of cos/sin for each threshold
-        # mask is boolean, cast to float for matmul?
-        # Actually np.dot handles boolean array as 0/1 integers.
-        # But explicitly casting might be safer/clearer.
-
-        cos_thetas = np.cos(ori_t) # (N,)
-        sin_thetas = np.sin(ori_t) # (N,)
-
-        # Using matrix multiplication: (N,) @ (N, M) -> (M,)
-        sum_cos = cos_thetas @ mask
-        sum_sin = sin_thetas @ mask
-
-        # Avoid division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
-            mean_cos = sum_cos / counts
-            mean_sin = sum_sin / counts
-            P = np.sqrt(mean_cos**2 + mean_sin**2)
-
-        # Replace NaNs (where counts == 0) with 0.0
-        P[counts == 0] = 0.0
-
-        local_polar_orders[t] = P
+        # 粒子が存在する閾値のみ計算
+        valid_mask = counts > 0
+        valid_counts = counts[valid_mask]
+        
+        # 累積和配列から「O(1)」で該当閾値までの和を取得して平均化
+        mean_cos = cumsum_cos[valid_counts - 1] / valid_counts
+        mean_sin = cumsum_sin[valid_counts - 1] / valid_counts
+        
+        local_polar_orders[t, valid_mask] = np.sqrt(mean_cos**2 + mean_sin**2)
 
     return local_polar_orders, interacting_counts
+
+def process_single_seed(seed, thresholds):
+    """マルチプロセス用のラッパー関数"""
+    polar_path = seed / "local_polar.zarr"
+    counts_path = seed / "counts.zarr"
+    thresholds_path = seed / "thresholds.zarr"
+
+    polar_orders, counts = calculate_local_polar_order(seed, thresholds)
+
+    # データの保存
+    polar_output = zarr.open(str(polar_path), mode='w', shape=polar_orders.shape, dtype=polar_orders.dtype)
+    polar_output[:] = polar_orders
+
+    counts_output = zarr.open(str(counts_path), mode='w', shape=counts.shape, dtype=counts.dtype)
+    counts_output[:] = counts
+
+    thresholds_output = zarr.open(str(thresholds_path), mode='w', shape=thresholds.shape, dtype=thresholds.dtype)
+    thresholds_output[:] = thresholds
+
+    return seed.name
 
 # =============================================================================
 # メイン処理
@@ -124,57 +127,34 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Determine thresholds
     if args.min is not None and args.max is not None:
         thresholds = np.arange(args.min, args.max + args.step/1000.0, args.step)
     else:
         thresholds = np.array([args.threshold])
 
-    try:
-        target_pattern = Path(args.target_path)
-        # Handle wildcard in pattern by checking parent directory
-        seeds = list(target_pattern.parent.glob(target_pattern.name))
+    target_pattern = Path(args.target_path)
+    seeds = list(target_pattern.parent.glob(target_pattern.name))
 
-        if not seeds:
-            print(f"⚠️ No files found matching pattern: {target_pattern}")
+    if not seeds:
+        print(f"⚠️ No files found matching pattern: {target_pattern}")
+        sys.exit(0)
 
-        for seed in seeds:
-            polar_path = seed / "local_polar.zarr"
-            counts_path = seed / "counts.zarr"
-            thresholds_path = seed / "thresholds.zarr"
+    print(f"🚀 Found {len(seeds)} files. Starting parallel processing...")
 
-            if polar_path.exists():
-                 print(f"♻️ Overwriting existing output in {seed}")
-
-            polar_orders, counts = calculate_local_polar_order(seed, thresholds)
-
-            # polar度とカウントの保存
-            polar_output = zarr.open(
-                str(polar_path),
-                mode='w',
-                shape = polar_orders.shape,
-                dtype = polar_orders.dtype
-                )
-            polar_output[:] = polar_orders
-
-            counts_output = zarr.open(
-                str(counts_path),
-                mode = 'w',
-                shape = counts.shape,
-                dtype = counts.dtype
-            )
-            counts_output[:] = counts
-
-            # Save thresholds
-            thresholds_output = zarr.open(
-                str(thresholds_path),
-                mode = 'w',
-                shape = thresholds.shape,
-                dtype = thresholds.dtype
-            )
-            thresholds_output[:] = thresholds
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
+    # --- 高速化ポイント4: ProcessPoolExecutorによる並列処理 ---
+    # M3チップの全コアをフル稼働させて、複数のZarrファイルを同時に処理します
+    max_workers = min(os.cpu_count(), len(seeds))
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # タスクをキューに投入
+        futures = {executor.submit(process_single_seed, seed, thresholds): seed for seed in seeds}
+        
+        # 全体の進捗をtqdmで表示
+        for future in tqdm(as_completed(futures), total=len(seeds), desc="Processing files"):
+            try:
+                seed_name = future.result()
+            except Exception as e:
+                seed = futures[future]
+                print(f"\n❌ Error in {seed.name}: {e}")
+                import traceback
+                traceback.print_exc()
