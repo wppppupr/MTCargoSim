@@ -15,12 +15,12 @@ include(joinpath(@__DIR__, "MTC.jl"))
 using .MTC
 
 # --- 設定 ---
-const WARMUP = 1500
+const WARMUP = 3000
 const STEPS = 1000000
 const SAVE_INT = 100
 const A = 0.5
 const dt = 0.01
-const cargo_radius = 2.0
+const cargo_radius = 1.0
 const start_seed = 1
 const end_seed = 101
 
