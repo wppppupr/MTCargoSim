@@ -125,7 +125,7 @@ def animate(data_folder, save_path = "animation/MT", box_size=16):
             np.cos(initial_orientations), np.sin(initial_orientations),
             color="#44AA99", scale=30, headwidth=2, headlength=3, pivot='middle'
         )
-        cargo_plot, = ax.plot(initial_cargo_position[0, 0], initial_cargo_position[0, 1], 'ro', markersize=marker_size_pt, label="Cargo", color = "#CC6677", alpha = 0.8)
+        cargo_plot, = ax.plot(initial_cargo_position[0, 0], initial_cargo_position[0, 1], 'ro', markersize=marker_size_pt, label="Cargo", color = "#332288", alpha = 0.8)
 
         def update(frame):
             current_positions = positions_history[frame]

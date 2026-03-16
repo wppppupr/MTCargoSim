@@ -56,14 +56,14 @@ function Parameters(;
     dna::Float64 = 0.01,
     f::Float64 = 1.13e-2
 )
-    tau = cargo_radius/v_MT
-    num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
-    interaction_radius = r_int / cargo_radius
-    r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / cargo_radius
-    r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / cargo_radius
+    tau = d_MT/v_MT
+    interaction_radius = r_int / d_MT
+    num_particles = round(Int, (packing_fraction * box_size^2) / (pi * interaction_radius^2) )
+    r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / d_MT
+    r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / d_MT
     dna_cut = 2.0 * dna
-    r_dna_cut = sqrt((d_MT+2*dna_cut)*(2*cargo_radius+2*dna_cut))/(1+(2*dna_cut+d_MT/2)/cargo_radius) / cargo_radius
-    dna_l = dna / cargo_radius
+    r_dna_cut = sqrt((d_MT+2*dna_cut)*(2*cargo_radius+2*dna_cut))/(1+(2*dna_cut+d_MT/2)/cargo_radius) / d_MT
+    dna_l = dna / d_MT
     epsilon = sqrt(exp(1)/2) * r_a * f
     Dr = tau * Dr_exp
 
@@ -72,8 +72,7 @@ function Parameters(;
         cargo_radius, d_MT, r_int, box_size, v_MT,
         warmup_dt, Dr_exp, k_cargo,
         k_MT, dna, f, tau,
-        num_particles,
-        interaction_radius,
+        interaction_radius, num_particles,
         r_a, r_dna, dna_cut, r_dna_cut,
         dna_l, epsilon, Dr
     )
@@ -146,9 +145,9 @@ function step!(data::Datas, params::Parameters)
     orientations = data.orientations
     box_size = params.box_size
     r_cut = params.interaction_radius
-    A = params.A
     dt = params.warmup_dt
     tau = params.tau
+    A = params.A * tau
     Dr = params.Dr
     N = params.num_particles
     
@@ -200,7 +199,7 @@ function step!(data::Datas, params::Parameters)
     end
 
     # 向きと位置の更新 (In-place)
-    noise_std = sqrt(2 * Dr * tau * dt)
+    noise_std = sqrt(2 * Dr * dt)
     @inbounds for i in 1:N
         noise = randn() * noise_std
         orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
@@ -217,9 +216,9 @@ function transport_step!(data::Datas, params::Parameters)
     r_cut = params.interaction_radius
     r_a = params.r_a
     r_dna_cut = params.r_dna_cut  # 力のカットオフとして使用
-    A = params.A
     dt = params.dt
     tau = params.tau
+    A = params.A * tau
     k_cargo = params.k_cargo
     k_MT = params.k_MT
     epsilon = params.epsilon
@@ -229,7 +228,11 @@ function transport_step!(data::Datas, params::Parameters)
     n_cells, cell_size, head, list = build_cell_list(positions, box_size, r_cut)
 
     alignment_term = zeros(N)
+    r_cut_sq = r_cut^2
     r_dna_cut_sq = r_dna_cut^2
+
+    mu_MT = tau/(k_MT * params.d_MT)
+    mu_cargo = tau/(k_cargo * params.d_MT)
 
     # --- 1. 微小管同士の整列 (Cell List) ---
     @inbounds for i in 1:N
@@ -308,20 +311,19 @@ function transport_step!(data::Datas, params::Parameters)
     end
     
     # --- 3. 更新 (In-place) ---
-    noise_std = sqrt(2 * Dr * tau * dt)
+    noise_std = sqrt(2 * Dr * dt)
     @inbounds for i in 1:N
         noise = randn() * noise_std
         orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
 
-        positions[1, i] += cos(orientations[i]) * dt - (tau/k_MT) * force_cargo_x[i] * dt
-        positions[2, i] += sin(orientations[i]) * dt - (tau/k_MT) * force_cargo_y[i] * dt
+        positions[1, i] += cos(orientations[i]) * dt - mu_MT * force_cargo_x[i] * dt
+        positions[2, i] += sin(orientations[i]) * dt - mu_MT * force_cargo_y[i] * dt
     end
     
-    cargo_positions[1] += (tau/k_cargo) * sum_fc_x * dt
-    cargo_positions[2] += (tau/k_cargo) * sum_fc_y * dt
+    cargo_positions[1] += mu_cargo * sum_fc_x * dt
+    cargo_positions[2] += mu_cargo * sum_fc_y * dt
 end
 
-end
 # --- メインシミュレーション関数 ---
 
 function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=100, base_path = "data")
@@ -451,4 +453,6 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
 
     # メモリ解放
     return nothing
+end
+
 end
