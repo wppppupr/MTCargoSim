@@ -16,8 +16,8 @@ using .MTC
 
 # --- 設定 ---
 const WARMUP = 3000
-const STEPS = 1000000
-const SAVE_INT = 100
+const STEPS = 20000000
+const SAVE_INT = 2000
 const A = 0.5
 const dt = 0.01
 const cargo_radius = 1.0
