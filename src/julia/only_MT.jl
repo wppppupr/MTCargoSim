@@ -1,94 +1,81 @@
-using ArgParse
-# 作成したモジュールファイルを読み込む
-include("MTC.jl")
-# モジュールを使う宣言
+# src/julia/run_worker.jl
+using Pkg
+try
+    Pkg.activate(dirname(dirname(@__DIR__))) # sim-projectルートを探す
+catch
+    Pkg.activate(".")
+end
+
+using Zarr
+using LinearAlgebra
+using Distributions
+
+# MTC.jl の読み込み (同じフォルダにある前提)
+include(joinpath(@__DIR__, "MTC.jl"))
 using .MTC
 
-BASE_PATH="D:\\Sasaki\\MTCargoSim\\MT"
+# --- 設定 ---
+const STEPS = 1000
+const SAVE_INT = 10
+const A = 0.9
+const dt = 0.2
+const cargo_radius = 1.18
+const start_seed = 7
+const end_seed = 12
 
-function parse_commandline()
-    s = ArgParseSettings()
+BASE_PATH = "D:\\Sasaki\\MTCargoSim\\MT"
 
-    @add_arg_table! s begin
-        "--packing_fraction", "-p"
-            help = "Packing fraction (default: 0.5)"
-            arg_type = Float64
-            default = 0.5
-        "--A", "-a"
-            help = "Alignment interaction strength (default: 0.5). Used if A_start/A_end are not specified."
-            arg_type = Float64
-            default = 0.5
-        "--A_start"
-            help = "Start value of A for parameter sweep. If specified with A_end, sweeps A."
-            arg_type = Float64
-            default = NaN
-        "--A_end"
-            help = "End value of A for parameter sweep."
-            arg_type = Float64
-            default = NaN
-        "--A_step"
-            help = "Step size of A for parameter sweep."
-            arg_type = Float64
-            default = 0.1
-        "--seed", "-s"
-            help = "Random seed (default: 1)"
-            arg_type = Int
-            default = 1
-        "--steps", "-n"
-            help = "Number of simulation steps (default: 1000)"
-            arg_type = Int
-            default = 1000
-    end
+# 全タスクリストを作成 (A: 0.5, Seed: 1~100)
+# ※ここを変更すれば計算内容が変わります
+const ALL_TASKS = []
 
-    return parse_args(s)
+for seed in start_seed:end_seed
+    push!(ALL_TASKS, seed)
 end
 
-# シミュレーションの実行例（直接実行した場合のみ実行されます）
-if abspath(PROGRAM_FILE) == @__FILE__
-    args = parse_commandline()
+# --- メイン処理 ---
+function main()
+    # 引数を受け取る (例: julia run_worker.jl 1 20)
+    # my_id: 自分の番号 (1〜total_workers)
+    # total_workers: 総ワーカー数
+    if length(ARGS) < 2
+        error("引数が足りません: worker_id total_workers")
+    end
     
-    # Aのリストを作成
-    A_values = Float64[]
-    if !isnan(args["A_start"]) && !isnan(args["A_end"])
-        A_start = args["A_start"]
-        A_end = args["A_end"]
-        A_step = args["A_step"]
-        # rangeオブジェクトをcollectして配列化
-        A_values = collect(A_start:A_step:A_end)
-    else
-        push!(A_values, args["A"])
-    end
+    my_id = parse(Int, ARGS[1])
+    total_workers = parse(Int, ARGS[2])
 
-    println("=== シミュレーション一括実行開始 ===")
-    println("実行パラメータ設定:")
-    println("  packing_fraction = $(args["packing_fraction"])")
-    if length(A_values) > 1
-        println("  対象とするAの値 = $(args["A_start"]) から $(args["A_end"]) まで (ステップ: $(args["A_step"]))")
-    else
-        println("  A = $(A_values[1])")
-    end
-    println("  seed = $(args["seed"])")
-    println("  simulation steps = $(args["steps"])")
-    println()
+    println("👷 Worker $my_id / $total_workers 起動: 担当タスクを探します...")
 
-    for (i, current_A) in enumerate(A_values)
-        if length(A_values) > 1
-            println("--------------------------------------------------")
-            println("[$i/$(length(A_values))] A = $current_A のシミュレーションを実行中...")
-        end
-        
-        params = Parameters(
-            packing_fraction=args["packing_fraction"],
-            A=current_A,
-            seed=args["seed"]
-        )
-        
-        final_data = MT_simulation(params, args["steps"]; base_path = BASE_PATH)
-        
-        if length(A_values) > 1
-            println("-> A = $current_A の計算完了")
+    # 自分の担当分だけループする
+    # index が my_id, my_id + total, my_id + 2*total ... のものだけ実行
+    count = 0
+    for (i, seed) in enumerate(ALL_TASKS)
+        # 割り当て判定 (モジュロ演算)
+        if (i - 1) % total_workers == (my_id - 1)
+            println("  👉 [Worker $my_id] 実行中: Seed=$seed")
+            
+            try
+                params = MTC.Parameters(
+                    packing_fraction = 0.5,
+                    A = A,
+                    dt = dt,
+                    seed = seed,
+                    cargo_radius = cargo_radius
+                )
+
+                MTC.MT_simulation(params, STEPS; save_interval = SAVE_INT, base_path=BASE_PATH)
+
+                # メモリ解放
+                GC.gc()
+                count += 1
+            catch e
+                println("  ❌ [Worker $my_id] エラー (A=$A, Seed=$seed): $e")
+            end
         end
     end
-
-    println("\nすべてのシミュレーション完了!")
+    
+    println("✅ [Worker $my_id] 完了 (処理数: $count)")
 end
+
+main()
