@@ -17,7 +17,7 @@ using .MTC
 # --- 設定 ---
 const STEPS = 1000
 const SAVE_INT = 10
-const A = 0.9
+const A = 0.1
 const dt = 0.2
 const cargo_radius = 1.18
 const start_seed = 7
