@@ -13,9 +13,21 @@ function parse_commandline()
             arg_type = Float64
             default = 0.5
         "--A", "-a"
-            help = "Alignment interaction strength (default: 0.5)"
+            help = "Alignment interaction strength (default: 0.5). Used if A_start/A_end are not specified."
             arg_type = Float64
             default = 0.5
+        "--A_start"
+            help = "Start value of A for parameter sweep. If specified with A_end, sweeps A."
+            arg_type = Float64
+            default = NaN
+        "--A_end"
+            help = "End value of A for parameter sweep."
+            arg_type = Float64
+            default = NaN
+        "--A_step"
+            help = "Step size of A for parameter sweep."
+            arg_type = Float64
+            default = 0.1
         "--seed", "-s"
             help = "Random seed (default: 1)"
             arg_type = Int
@@ -33,20 +45,48 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     args = parse_commandline()
     
-    println("実行パラメータ:")
+    # Aのリストを作成
+    A_values = Float64[]
+    if !isnan(args["A_start"]) && !isnan(args["A_end"])
+        A_start = args["A_start"]
+        A_end = args["A_end"]
+        A_step = args["A_step"]
+        # rangeオブジェクトをcollectして配列化
+        A_values = collect(A_start:A_step:A_end)
+    else
+        push!(A_values, args["A"])
+    end
+
+    println("=== シミュレーション一括実行開始 ===")
+    println("実行パラメータ設定:")
     println("  packing_fraction = $(args["packing_fraction"])")
-    println("  A = $(args["A"])")
+    if length(A_values) > 1
+        println("  対象とするAの値 = $(args["A_start"]) から $(args["A_end"]) まで (ステップ: $(args["A_step"]))")
+    else
+        println("  A = $(A_values[1])")
+    end
     println("  seed = $(args["seed"])")
     println("  simulation steps = $(args["steps"])")
     println()
 
-    params = Parameters(
-        packing_fraction=args["packing_fraction"],
-        A=args["A"],
-        seed=args["seed"]
-    )
-    
-    final_data = MT_simulation(params, args["steps"])
+    for (i, current_A) in enumerate(A_values)
+        if length(A_values) > 1
+            println("--------------------------------------------------")
+            println("[$i/$(length(A_values))] A = $current_A のシミュレーションを実行中...")
+        end
+        
+        params = Parameters(
+            packing_fraction=args["packing_fraction"],
+            A=current_A,
+            seed=args["seed"]
+        )
+        
+        final_data = MT_simulation(params, args["steps"])
+        
+        if length(A_values) > 1
+            println("-> A = $current_A の計算完了")
+        end
+    end
 
-    println("\nシミュレーション完了!")
+    println("\nすべてのシミュレーション完了!")
 end

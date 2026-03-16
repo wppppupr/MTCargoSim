@@ -10,14 +10,14 @@ using .MTC
 println("🍎 Mac用テストを開始します...")
 
 
-cargo_radius = 0.315
+cargo_radius = 5.0
 
 
 # 1. パラメータの設定 (軽く動かすための設定)
 params = Parameters(
-    packing_fraction = 0.1,
+    packing_fraction = 0.5,
     A = 0.5,
-    dt = 0.01,
+    dt = 0.2,
     seed = 1000,
     cargo_radius = cargo_radius
 )

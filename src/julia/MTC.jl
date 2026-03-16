@@ -20,7 +20,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     r_int::Float64 = 0.1                
     box_size::Float64 = 16.0            
     v_MT::Float64 = 0.5                 
-    warmup_dt::Float64 = 0.1            
+    warmup_dt::Float64 = 2.0            
     Dr_exp::Float64 = 0.0125            
     k_cargo::Float64 = 2.26e-2
     k_MT::Float64 = 9.04e-2             
@@ -49,7 +49,7 @@ function Parameters(;
     r_int::Float64 = 0.1,
     box_size::Float64 = 16.0,
     v_MT::Float64 = 0.5,
-    warmup_dt::Float64 = 0.1,
+    warmup_dt::Float64 = 2.0,
     Dr_exp::Float64 = 0.0125,
     k_cargo::Float64 = 2.26e-2,
     k_MT::Float64 = 9.04e-2,
@@ -82,6 +82,20 @@ mutable struct Datas
     positions::Matrix{Float64}         
     orientations::Vector{Float64}      
     cargo_positions::Matrix{Float64}   
+    
+    # 割り当て削減のためのキャッシュ
+    alignment_term::Vector{Float64}
+    force_cargo_x::Vector{Float64}
+    force_cargo_y::Vector{Float64}
+    noise_buffer::Vector{Float64}
+    
+    # Cell Listのキャッシュ
+    head::Vector{Int}
+    list::Vector{Int}
+    
+    # 計算削減のためのキャッシュ
+    sin_2theta::Vector{Float64}
+    cos_2theta::Vector{Float64}
 end
 
 # --- ヘルパー関数 ---
@@ -100,7 +114,23 @@ function initialize(params::Parameters)
     orientations = rand(num_particles) .* 2 * π
     cargo_positions = [box_size / 2 box_size / 2]
 
-    return Datas(positions, orientations, cargo_positions)
+    # メモリアロケーションを避けるための配列初期化
+    alignment_term = zeros(num_particles)
+    force_cargo_x = zeros(num_particles)
+    force_cargo_y = zeros(num_particles)
+    noise_buffer = zeros(num_particles)
+    
+    r_cut = params.interaction_radius
+    n_cells = max(1, floor(Int, box_size / r_cut))
+    head = zeros(Int, n_cells * n_cells)
+    list = zeros(Int, num_particles)
+    
+    sin_2theta = zeros(num_particles)
+    cos_2theta = zeros(num_particles)
+
+    return Datas(positions, orientations, cargo_positions, 
+                 alignment_term, force_cargo_x, force_cargo_y, noise_buffer, 
+                 head, list, sin_2theta, cos_2theta)
 end
 
 # In-placeでメモリアロケーションを防ぐ
@@ -113,14 +143,13 @@ function apply_periodic_boundary!(positions::Matrix{Float64}, cargo_positions::M
     cargo_positions[2] = mod(cargo_positions[2], box_size)
 end
 
-# --- Cell List の構築 ---
-function build_cell_list(positions::Matrix{Float64}, box_size::Float64, r_cut::Float64)
+# --- Cell List の更新 (In-place) ---
+function update_cell_list!(head::Vector{Int}, list::Vector{Int}, positions::Matrix{Float64}, box_size::Float64, r_cut::Float64)
     N = size(positions, 2)
     n_cells = max(1, floor(Int, box_size / r_cut))
     cell_size = box_size / n_cells
     
-    head = fill(0, n_cells * n_cells)
-    list = fill(0, N)
+    fill!(head, 0)
     
     @inbounds for i in 1:N
         cx = floor(Int, positions[1, i] / cell_size)
@@ -135,7 +164,7 @@ function build_cell_list(positions::Matrix{Float64}, box_size::Float64, r_cut::F
         head[cell_idx] = i
     end
     
-    return n_cells, cell_size, head, list
+    return n_cells, cell_size
 end
 
 # --- ステップ処理 ---
@@ -151,10 +180,22 @@ function step!(data::Datas, params::Parameters)
     Dr = params.Dr
     N = params.num_particles
     
-    n_cells, cell_size, head, list = build_cell_list(positions, box_size, r_cut)
+    alignment_term = data.alignment_term
+    sin_2theta = data.sin_2theta
+    cos_2theta = data.cos_2theta
+    head = data.head
+    list = data.list
+    noise_buffer = data.noise_buffer
     
-    alignment_term = zeros(N)
+    n_cells, cell_size = update_cell_list!(head, list, positions, box_size, r_cut)
+    
     r_cut_sq = r_cut^2
+
+    # 三角関数の事前計算 (ベクトル計算の削減)
+    @inbounds for i in 1:N
+        sin_2theta[i] = sin(2 * orientations[i])
+        cos_2theta[i] = cos(2 * orientations[i])
+    end
 
     @inbounds for i in 1:N
         x_i = positions[1,i]
@@ -165,7 +206,8 @@ function step!(data::Datas, params::Parameters)
         cx = clamp(cx, 0, n_cells - 1)
         cy = clamp(cy, 0, n_cells - 1)
         
-        sum_sin = 0.0
+        sum_s2 = 0.0
+        sum_c2 = 0.0
         n_neighbors = 0
         
         # 近傍の3x3セルのみを探索
@@ -185,8 +227,8 @@ function step!(data::Datas, params::Parameters)
 
                     if dx^2 + dy^2 < r_cut_sq
                         n_neighbors += 1
-                        dtheta = orientations[j] - orientations[i]
-                        sum_sin += sin(2*dtheta)
+                        sum_s2 += sin_2theta[j]
+                        sum_c2 += cos_2theta[j]
                     end
                 end
                 j = list[j]
@@ -194,14 +236,18 @@ function step!(data::Datas, params::Parameters)
         end
 
         if n_neighbors > 0
+            sum_sin = sum_s2 * cos_2theta[i] - sum_c2 * sin_2theta[i]
             alignment_term[i] = (A / n_neighbors) * sum_sin
+        else
+            alignment_term[i] = 0.0
         end
     end
 
     # 向きと位置の更新 (In-place)
     noise_std = sqrt(2 * Dr * dt)
+    randn!(noise_buffer)
     @inbounds for i in 1:N
-        noise = randn() * noise_std
+        noise = noise_buffer[i] * noise_std
         orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
         positions[1, i] += cos(orientations[i]) * dt
         positions[2, i] += sin(orientations[i]) * dt
@@ -225,14 +271,28 @@ function transport_step!(data::Datas, params::Parameters)
     Dr = params.Dr
     N = params.num_particles
     
-    n_cells, cell_size, head, list = build_cell_list(positions, box_size, r_cut)
+    alignment_term = data.alignment_term
+    force_cargo_x = data.force_cargo_x
+    force_cargo_y = data.force_cargo_y
+    sin_2theta = data.sin_2theta
+    cos_2theta = data.cos_2theta
+    head = data.head
+    list = data.list
+    noise_buffer = data.noise_buffer
+    
+    n_cells, cell_size = update_cell_list!(head, list, positions, box_size, r_cut)
 
-    alignment_term = zeros(N)
     r_cut_sq = r_cut^2
     r_dna_cut_sq = r_dna_cut^2
 
     mu_MT = tau/(k_MT * params.d_MT)
     mu_cargo = tau/(k_cargo * params.d_MT)
+
+    # 三角関数の事前計算
+    @inbounds for i in 1:N
+        sin_2theta[i] = sin(2 * orientations[i])
+        cos_2theta[i] = cos(2 * orientations[i])
+    end
 
     # --- 1. 微小管同士の整列 (Cell List) ---
     @inbounds for i in 1:N
@@ -244,7 +304,8 @@ function transport_step!(data::Datas, params::Parameters)
         cx = clamp(cx, 0, n_cells - 1)
         cy = clamp(cy, 0, n_cells - 1)
         
-        sum_sin = 0.0
+        sum_s2 = 0.0
+        sum_c2 = 0.0
         n_neighbors = 0
         
         for dcx in -1:1, dcy in -1:1
@@ -263,8 +324,8 @@ function transport_step!(data::Datas, params::Parameters)
 
                     if dx^2 + dy^2 < r_cut_sq
                         n_neighbors += 1
-                        dtheta = orientations[j] - orientations[i]
-                        sum_sin += sin(2*dtheta)
+                        sum_s2 += sin_2theta[j]
+                        sum_c2 += cos_2theta[j]
                     end
                 end
                 j = list[j]
@@ -272,7 +333,10 @@ function transport_step!(data::Datas, params::Parameters)
         end
 
         if n_neighbors > 0
+            sum_sin = sum_s2 * cos_2theta[i] - sum_c2 * sin_2theta[i]
             alignment_term[i] = (A / n_neighbors) * sum_sin
+        else
+            alignment_term[i] = 0.0
         end
     end
 
@@ -280,10 +344,11 @@ function transport_step!(data::Datas, params::Parameters)
     x_cargo = cargo_positions[1]
     y_cargo = cargo_positions[2]
 
-    force_cargo_x = zeros(N)
-    force_cargo_y = zeros(N)
     sum_fc_x = 0.0
     sum_fc_y = 0.0
+
+    fill!(force_cargo_x, 0.0)
+    fill!(force_cargo_y, 0.0)
 
     @inbounds for i in 1:N
         dx = x_cargo - positions[1,i]
@@ -312,8 +377,9 @@ function transport_step!(data::Datas, params::Parameters)
     
     # --- 3. 更新 (In-place) ---
     noise_std = sqrt(2 * Dr * dt)
+    randn!(noise_buffer)
     @inbounds for i in 1:N
-        noise = randn() * noise_std
+        noise = noise_buffer[i] * noise_std
         orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
 
         positions[1, i] += cos(orientations[i]) * dt - mu_MT * force_cargo_x[i] * dt
