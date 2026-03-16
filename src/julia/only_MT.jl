@@ -4,6 +4,8 @@ include("MTC.jl")
 # モジュールを使う宣言
 using .MTC
 
+BASE_PATH="D:\\Sasaki\\MTCargoSim\\MT"
+
 function parse_commandline()
     s = ArgParseSettings()
 
@@ -81,7 +83,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             seed=args["seed"]
         )
         
-        final_data = MT_simulation(params, args["steps"])
+        final_data = MT_simulation(params, args["steps"]; base_path = BASE_PATH)
         
         if length(A_values) > 1
             println("-> A = $current_A の計算完了")
