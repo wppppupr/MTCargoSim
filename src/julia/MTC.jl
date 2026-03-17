@@ -10,22 +10,22 @@ using Random
 export Parameters, Datas, run_simulation, MT_simulation
 
 @kwdef struct Parameters
-    packing_fraction::Float64           
-    A::Float64                          
-    dt::Float64                  
-    seed::Int                           
-    cargo_radius::Float64        
+    packing_fraction::Float64
+    A::Float64
+    dt::Float64
+    seed::Int
+    cargo_radius::Float64
     
-    d_MT::Float64 = 0.025               
-    r_int::Float64 = 0.1                
-    box_size::Float64 = 8.0
-    v_MT::Float64 = 0.5                 
+    d_MT::Float64 = 0.025
+    r_int::Float64 = 0.1
+    box_size::Float64 = 16.0
+    v_MT::Float64 = 0.5
     warmup_dt::Float64 = 0.2            
     Dr_exp::Float64 = 0.0125            
     k_cargo::Float64 = 2.26e-2
     k_MT::Float64 = 9.04e-2             
     dna::Float64 = 0.01                 
-    f::Float64 = 1.13e-2                
+    f::Float64 = 1.13e-2
 
     tau::Float64 
     box_size_nd::Float64
@@ -48,7 +48,7 @@ function Parameters(;
     cargo_radius::Float64,
     d_MT::Float64 = 0.025,
     r_int::Float64 = 0.1,
-    box_size::Float64 = 8.0,
+    box_size::Float64 = 16.0,
     v_MT::Float64 = 0.5,
     warmup_dt::Float64 = 0.2,
     Dr_exp::Float64 = 0.0125,
@@ -60,7 +60,7 @@ function Parameters(;
     tau = d_MT/v_MT
     box_size_nd = box_size/d_MT
     interaction_radius = r_int / d_MT 
-    num_particles = round(Int, (packing_fraction * box_size^2) / (pi * (d_MT/2)^2) )
+    num_particles = round(Int, (packing_fraction * box_size^2) / (pi * r_int^2) )
     r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / d_MT
     r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / d_MT
     dna_cut = 2.0 * dna

@@ -11,7 +11,7 @@ println("win 用テストを開始します...")
 
 # 1. パラメータの設定 (軽く動かすための設定)
 params = Parameters(
-    packing_fraction = 0.05,
+    packing_fraction = 0.5,
                     A = 0.5,
                     dt = 0.01,
                     seed = 1,
@@ -26,8 +26,8 @@ println("📂 保存先: $mac_base_path")
 
 # 3. シミュレーション実行 (1000ステップだけ回す)
 # base_path 引数でデフォルトのWindowsパスを上書きするのがポイントです
-run_simulation(params, 1000, 1000; 
-    save_interval = 10, 
+run_simulation(params, 10000, 10000; 
+    save_interval = 100, 
     base_path = mac_base_path
 )
 

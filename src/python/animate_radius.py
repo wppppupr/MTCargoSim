@@ -33,7 +33,7 @@ def extract_radius(data_folder):
     print("Warning: 'cargo_radius' not found or invalid in parameters.txt. Using default radius 0.5.")
     return 0.5
 
-def animate(data_folder, save_path=None, box_size=320, max_frames=None):
+def animate(data_folder, save_path=None, box_size=640, max_frames=None):
     """
     データからアニメーションを生成し、動画ファイルとして保存します。
     Cargoのサイズはフォルダ名から抽出したradiusを反映します。
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create animations with dynamic cargo radius.")
     parser.add_argument("data_folder", type=str, help="Path to the simulation seed directory (e.g. MTC/P0.5...radius0.315/seed1.zarr)")
     parser.add_argument("--save_path", type=str, default=None, help="Directory to save the animation. Default is inside the data_folder.")
-    parser.add_argument("--box_size", type=float, default=320, help="Box size for the animation (default: 16)")
+    parser.add_argument("--box_size", type=float, default=640, help="Box size for the animation (default: 16)")
     parser.add_argument("--max_frames", type=int, default=None, help="Maximum number of frames to render")
     
     args = parser.parse_args()
