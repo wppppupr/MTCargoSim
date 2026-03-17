@@ -26,6 +26,9 @@ animation/
 # または拡張子で広く無視する設定
 *.npy
 *.mov
+*.txt
+*.zarray
+*.zattrs
 # pixi environments
 .pixi/*
 !.pixi/config.toml

@@ -3,7 +3,7 @@
 
 # 同時起動数 (PCのスペックに合わせて調整)
 # Core i9 / 64GB RAM なら 20〜24 くらいはいけます
-const NUM_WORKERS = 13
+const NUM_WORKERS = 23
 
 println("🚀 手動並列化ランチャーを起動します")
 println("🔥 同時実行数: $NUM_WORKERS プロセス")

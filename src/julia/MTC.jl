@@ -18,7 +18,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     
     d_MT::Float64 = 0.025               
     r_int::Float64 = 0.1                
-    box_size::Float64 = 16.0            
+    box_size::Float64 = 8.0
     v_MT::Float64 = 0.5                 
     warmup_dt::Float64 = 0.2            
     Dr_exp::Float64 = 0.0125            
@@ -27,9 +27,10 @@ export Parameters, Datas, run_simulation, MT_simulation
     dna::Float64 = 0.01                 
     f::Float64 = 1.13e-2                
 
-    tau::Float64                 
+    tau::Float64 
+    box_size_nd::Float64
+    interaction_radius::Float64                
     num_particles::Int
-    interaction_radius::Float64
     r_a::Float64                        
     r_dna::Float64
     dna_cut::Float64
@@ -47,7 +48,7 @@ function Parameters(;
     cargo_radius::Float64,
     d_MT::Float64 = 0.025,
     r_int::Float64 = 0.1,
-    box_size::Float64 = 16.0,
+    box_size::Float64 = 8.0,
     v_MT::Float64 = 0.5,
     warmup_dt::Float64 = 0.2,
     Dr_exp::Float64 = 0.0125,
@@ -57,8 +58,9 @@ function Parameters(;
     f::Float64 = 1.13e-2
 )
     tau = d_MT/v_MT
-    interaction_radius = r_int / d_MT
-    num_particles = round(Int, (packing_fraction * box_size^2) / (pi * interaction_radius^2) )
+    box_size_nd = box_size/d_MT
+    interaction_radius = r_int / d_MT 
+    num_particles = round(Int, (packing_fraction * box_size^2) / (pi * (d_MT/2)^2) )
     r_a = sqrt(2 * cargo_radius * d_MT/ (1 + d_MT/(2*cargo_radius))^2 ) / d_MT
     r_dna = sqrt((d_MT+2*dna)*(2*cargo_radius+2*dna))/(1+(2*dna+d_MT/2)/cargo_radius) / d_MT
     dna_cut = 2.0 * dna
@@ -71,7 +73,7 @@ function Parameters(;
         packing_fraction, A, dt, seed,
         cargo_radius, d_MT, r_int, box_size, v_MT,
         warmup_dt, Dr_exp, k_cargo,
-        k_MT, dna, f, tau,
+        k_MT, dna, f, tau, box_size_nd,
         interaction_radius, num_particles,
         r_a, r_dna, dna_cut, r_dna_cut,
         dna_l, epsilon, Dr
@@ -108,11 +110,11 @@ function initialize(params::Parameters)
     Random.seed!(params.seed)
     
     num_particles = params.num_particles
-    box_size = params.box_size
+    box_size_nd = params.box_size_nd
 
-    positions = rand(2, num_particles) .* box_size
+    positions = rand(2, num_particles) .* box_size_nd
     orientations = rand(num_particles) .* 2 * π
-    cargo_positions = [box_size / 2 box_size / 2]
+    cargo_positions = [box_size_nd / 2 box_size_nd / 2]
 
     # メモリアロケーションを避けるための配列初期化
     alignment_term = zeros(num_particles)
@@ -121,7 +123,7 @@ function initialize(params::Parameters)
     noise_buffer = zeros(num_particles)
     
     r_cut = params.interaction_radius
-    n_cells = max(1, floor(Int, box_size / r_cut))
+    n_cells = max(1, floor(Int, box_size_nd / r_cut))
     head = zeros(Int, n_cells * n_cells)
     list = zeros(Int, num_particles)
     
@@ -134,20 +136,20 @@ function initialize(params::Parameters)
 end
 
 # In-placeでメモリアロケーションを防ぐ
-function apply_periodic_boundary!(positions::Matrix{Float64}, cargo_positions::Matrix{Float64}, box_size::Float64)
+function apply_periodic_boundary!(positions::Matrix{Float64}, cargo_positions::Matrix{Float64}, box_size_nd::Float64)
     @inbounds for i in axes(positions, 2)
-        positions[1, i] = mod(positions[1, i], box_size)
-        positions[2, i] = mod(positions[2, i], box_size)
+        positions[1, i] = mod(positions[1, i], box_size_nd)
+        positions[2, i] = mod(positions[2, i], box_size_nd)
     end
-    cargo_positions[1] = mod(cargo_positions[1], box_size)
-    cargo_positions[2] = mod(cargo_positions[2], box_size)
+    cargo_positions[1] = mod(cargo_positions[1], box_size_nd)
+    cargo_positions[2] = mod(cargo_positions[2], box_size_nd)
 end
 
 # --- Cell List の更新 (In-place) ---
-function update_cell_list!(head::Vector{Int}, list::Vector{Int}, positions::Matrix{Float64}, box_size::Float64, r_cut::Float64)
+function update_cell_list!(head::Vector{Int}, list::Vector{Int}, positions::Matrix{Float64}, box_size_nd::Float64, r_cut::Float64)
     N = size(positions, 2)
-    n_cells = max(1, floor(Int, box_size / r_cut))
-    cell_size = box_size / n_cells
+    n_cells = max(1, floor(Int, box_size_nd / r_cut))
+    cell_size = box_size_nd / n_cells
     
     fill!(head, 0)
     
@@ -172,7 +174,7 @@ end
 function step!(data::Datas, params::Parameters)
     positions = data.positions
     orientations = data.orientations
-    box_size = params.box_size
+    box_size_nd = params.box_size_nd
     r_cut = params.interaction_radius
     dt = params.warmup_dt
     tau = params.tau
@@ -187,7 +189,7 @@ function step!(data::Datas, params::Parameters)
     list = data.list
     noise_buffer = data.noise_buffer
     
-    n_cells, cell_size = update_cell_list!(head, list, positions, box_size, r_cut)
+    n_cells, cell_size = update_cell_list!(head, list, positions, box_size_nd, r_cut)
     
     r_cut_sq = r_cut^2
 
@@ -222,8 +224,8 @@ function step!(data::Datas, params::Parameters)
                     dx = x_i - positions[1,j]
                     dy = y_i - positions[2,j]
 
-                    dx -= round(dx / box_size) * box_size
-                    dy -= round(dy / box_size) * box_size
+                    dx -= round(dx / box_size_nd) * box_size_nd
+                    dy -= round(dy / box_size_nd) * box_size_nd
 
                     if dx^2 + dy^2 < r_cut_sq
                         n_neighbors += 1
@@ -258,7 +260,7 @@ function transport_step!(data::Datas, params::Parameters)
     positions = data.positions
     orientations = data.orientations
     cargo_positions = data.cargo_positions
-    box_size = params.box_size
+    box_size_nd = params.box_size_nd
     r_cut = params.interaction_radius
     r_a = params.r_a
     r_dna_cut = params.r_dna_cut  # 力のカットオフとして使用
@@ -280,7 +282,7 @@ function transport_step!(data::Datas, params::Parameters)
     list = data.list
     noise_buffer = data.noise_buffer
     
-    n_cells, cell_size = update_cell_list!(head, list, positions, box_size, r_cut)
+    n_cells, cell_size = update_cell_list!(head, list, positions, box_size_nd, r_cut)
 
     r_cut_sq = r_cut^2
     r_dna_cut_sq = r_dna_cut^2
@@ -319,8 +321,8 @@ function transport_step!(data::Datas, params::Parameters)
                     dx = x_i - positions[1,j]
                     dy = y_i - positions[2,j]
 
-                    dx -= round(dx / box_size) * box_size
-                    dy -= round(dy / box_size) * box_size
+                    dx -= round(dx / box_size_nd) * box_size_nd
+                    dy -= round(dy / box_size_nd) * box_size_nd
 
                     if dx^2 + dy^2 < r_cut_sq
                         n_neighbors += 1
@@ -354,8 +356,8 @@ function transport_step!(data::Datas, params::Parameters)
         dx = x_cargo - positions[1,i]
         dy = y_cargo - positions[2,i]
 
-        dx -= round(dx / box_size) * box_size
-        dy -= round(dy / box_size) * box_size
+        dx -= round(dx / box_size_nd) * box_size_nd
+        dy -= round(dy / box_size_nd) * box_size_nd
 
         r2 = dx^2 + dy^2
 
@@ -408,7 +410,7 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
 
     for step in 1:num_steps
         step!(data, params)
-        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size)
+        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size_nd)
 
         if step % save_interval == 0
             if save_idx <= num_saved_steps
@@ -465,7 +467,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
     println("ウォームアップ中... ($warmup steps)")
     @showprogress for step in 1:warmup
         step!(data, params)
-        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size)
+        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size_nd)
     end
 
     println("メインシミュレーション中... ($num_steps steps)")
@@ -474,7 +476,7 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
 
     for step in 1:num_steps
         transport_step!(data, params)
-        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size)
+        apply_periodic_boundary!(data.positions, data.cargo_positions, params.box_size_nd)
 
         if step % save_interval == 0
             if save_idx <= num_saved_steps
