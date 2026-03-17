@@ -21,6 +21,9 @@ for i in 1:NUM_WORKERS
     
     # 2. 実行する
     run(cmd, wait=false)
+
+    # 対策: OSがウィンドウを開く処理を取りこぼさないよう、0.5秒ずつズラして起動する
+    sleep(0.5)
 end
 
 println("🎉 全プロセスの起動指令を出しました！")
