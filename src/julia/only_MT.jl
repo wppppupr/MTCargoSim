@@ -15,13 +15,13 @@ include(joinpath(@__DIR__, "MTC.jl"))
 using .MTC
 
 # --- 設定 ---
-const STEPS = 10000
+const STEPS = 100000
 const SAVE_INT = 10
 const A = 0.5
 const dt = 0.2
 const cargo_radius = 1.18
 const start_seed = 1
-const end_seed = 12
+const end_seed = 20
 
 BASE_PATH = "D:\\Sasaki\\MTCargoSim\\MT"
 
