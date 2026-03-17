@@ -17,7 +17,9 @@ using .MTC
 # --- 設定 ---
 const STEPS = 100000
 const SAVE_INT = 10
-const A = 0.5
+const start_A = 0.0
+const stop_A = 1.0
+const step_A = 0.1
 const dt = 0.2
 const cargo_radius = 1.18
 const start_seed = 1
@@ -25,12 +27,14 @@ const end_seed = 20
 
 BASE_PATH = "D:\\Sasaki\\MTCargoSim\\MT"
 
-# 全タスクリストを作成 (A: 0.5, Seed: 1~100)
+# 全タスクリストを作成
 # ※ここを変更すれば計算内容が変わります
 const ALL_TASKS = []
 
-for seed in start_seed:end_seed
-    push!(ALL_TASKS, seed)
+for a_val in start_A:step_A:stop_A
+    for seed in start_seed:end_seed
+        push!(ALL_TASKS, (a_val, seed))
+    end
 end
 
 # --- メイン処理 ---
@@ -50,15 +54,16 @@ function main()
     # 自分の担当分だけループする
     # index が my_id, my_id + total, my_id + 2*total ... のものだけ実行
     count = 0
-    for (i, seed) in enumerate(ALL_TASKS)
+    for (i, task) in enumerate(ALL_TASKS)
+        a_val, seed = task
         # 割り当て判定 (モジュロ演算)
         if (i - 1) % total_workers == (my_id - 1)
-            println("  👉 [Worker $my_id] 実行中: Seed=$seed")
+            println("  👉 [Worker $my_id] 実行中: A=$(round(a_val, digits=2)), Seed=$seed")
             
             try
                 params = MTC.Parameters(
                     packing_fraction = 0.5,
-                    A = A,
+                    A = a_val,
                     dt = dt,
                     seed = seed,
                     cargo_radius = cargo_radius
@@ -70,7 +75,7 @@ function main()
                 GC.gc()
                 count += 1
             catch e
-                println("  ❌ [Worker $my_id] エラー (A=$A, Seed=$seed): $e")
+                println("  ❌ [Worker $my_id] エラー (A=$(round(a_val, digits=2)), Seed=$seed): $e")
             end
         end
     end
