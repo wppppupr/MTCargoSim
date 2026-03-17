@@ -20,7 +20,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     r_int::Float64 = 0.1
     box_size::Float64 = 16.0
     v_MT::Float64 = 0.5
-    warmup_dt::Float64 = 0.2            
+    warmup_dt::Float64 = 0.2
     Dr_exp::Float64 = 0.0125            
     k_cargo::Float64 = 2.26e-2
     k_MT::Float64 = 9.04e-2             

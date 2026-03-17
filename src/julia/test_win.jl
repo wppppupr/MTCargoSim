@@ -26,7 +26,7 @@ println("📂 保存先: $mac_base_path")
 
 # 3. シミュレーション実行 (1000ステップだけ回す)
 # base_path 引数でデフォルトのWindowsパスを上書きするのがポイントです
-run_simulation(params, 10000, 10000; 
+run_simulation(params, 20000, 10000; 
     save_interval = 100, 
     base_path = mac_base_path
 )
