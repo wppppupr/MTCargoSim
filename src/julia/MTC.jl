@@ -193,6 +193,8 @@ function step!(data::Datas, params::Parameters)
     
     r_cut_sq = r_cut^2
 
+    inv_box = 1.0 / box_size_nd
+
     # 三角関数の事前計算 (ベクトル計算の削減)
     @inbounds for i in 1:N
         sin_2theta[i] = sin(2 * orientations[i])
@@ -224,8 +226,8 @@ function step!(data::Datas, params::Parameters)
                     dx = x_i - positions[1,j]
                     dy = y_i - positions[2,j]
 
-                    dx -= round(dx / box_size_nd) * box_size_nd
-                    dy -= round(dy / box_size_nd) * box_size_nd
+                    dx -= round(dx * inv_box) * box_size_nd
+                    dy -= round(dy * inv_box) * box_size_nd
 
                     if dx^2 + dy^2 < r_cut_sq
                         n_neighbors += 1
@@ -290,6 +292,9 @@ function transport_step!(data::Datas, params::Parameters)
     mu_MT = tau/(k_MT * params.d_MT)
     mu_cargo = tau/(k_cargo * params.d_MT)
 
+    inv_box = 1.0 / box_size_nd
+    inv_r_a_sq = 1.0 / (r_a^2)
+
     # 三角関数の事前計算
     @inbounds for i in 1:N
         sin_2theta[i] = sin(2 * orientations[i])
@@ -321,8 +326,8 @@ function transport_step!(data::Datas, params::Parameters)
                     dx = x_i - positions[1,j]
                     dy = y_i - positions[2,j]
 
-                    dx -= round(dx / box_size_nd) * box_size_nd
-                    dy -= round(dy / box_size_nd) * box_size_nd
+                    dx -= round(dx * inv_box) * box_size_nd
+                    dy -= round(dy * inv_box) * box_size_nd
 
                     if dx^2 + dy^2 < r_cut_sq
                         n_neighbors += 1
@@ -363,11 +368,19 @@ function transport_step!(data::Datas, params::Parameters)
 
         # --- 力のカットオフ：r_dnaの距離内でのみ計算 ---
         if r2 < r_dna_cut_sq
+
+            """
+            # こっちだと割り算や平方根の処理を挟んでいて遅い
             r = sqrt(r2)
             f_val = dna_force(epsilon, r, r_a)
             
             fc_x = f_val * dx / r
             fc_y = f_val * dy / r
+            """
+            f_mag_over_r = -2.0 * epsilon * exp(-r2 * inv_r_a_sq) * inv_r_a_sq # こっちの方が速い
+            
+            fc_x = f_mag_over_r * dx
+            fc_y = f_mag_over_r * dy
             
             force_cargo_x[i] = fc_x
             force_cargo_y[i] = fc_y
