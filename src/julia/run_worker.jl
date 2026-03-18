@@ -20,9 +20,9 @@ const STEPS = 20000000
 const SAVE_INT = 2000
 const A = 0.5
 const dt = 0.01
-const cargo_radius = 0.5
+const cargo_radius = 5.0
 const start_seed = 1
-const end_seed = 101
+const end_seed = 41
 
 BASE_PATH = "D:\\Sasaki\\MTCargoSim\\MTC"
 
