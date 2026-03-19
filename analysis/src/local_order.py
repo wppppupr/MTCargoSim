@@ -15,7 +15,7 @@ from get_params import get_params
 # =============================================================================
 # 設定
 # =============================================================================
-DEFAULT_TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius0.59' / 'seed*.zarr'
+DEFAULT_TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius0.5' / 'seed*.zarr'
 OUTPUT_PLOT = "local_polar_order.png"
 
 # =============================================================================
@@ -45,7 +45,8 @@ def calculate_local_polar_order(zarr_path, thresholds):
     cargo = np.ascontiguousarray(cargo.T) # (Time, 2)
         
     params = get_params(zarr_path)
-    L = params["box_size"]
+    # Replace L with box_size_nd since positions and thresholds are non-dimensionalized
+    L = params.get("box_size_nd", params["box_size"] / params.get("d_MT", 1.0))
     
     num_steps, num_particles = orientations.shape
     num_thresholds = len(thresholds)
@@ -121,8 +122,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate local polar order parameter around cargo.")
     parser.add_argument("target_path", type=str, nargs='?', default=DEFAULT_TARGET_PATH, help="Path pattern for zarr files (e.g. 'data/seed*.zarr')")
     parser.add_argument("--min", type=float, default=0.0, help="Minimum threshold for interaction range")
-    parser.add_argument("--max", type=float, default=1.0, help="Maximum threshold for interaction range")
-    parser.add_argument("--step", type=float, default=0.01, help="Step size for threshold range")
+    parser.add_argument("--max", type=float, default=480, help="Maximum threshold for interaction range")
+    parser.add_argument("--step", type=float, default=1, help="Step size for threshold range")
     parser.add_argument("--threshold", type=float, default=0.28, help="Single threshold value (used if min/max not specified)")
 
     args = parser.parse_args()

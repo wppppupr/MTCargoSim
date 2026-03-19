@@ -16,7 +16,7 @@ from data_root import data_root
 # 設定
 # =============================================================================
 
-DEFAULT_TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius0.59' / 'seed*.zarr'
+DEFAULT_TARGET_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius0.5' / 'seed*.zarr'
 
 # =============================================================================
 # 関数定義
@@ -37,7 +37,7 @@ def calculate_center_polar_order(zarr_path, thresholds):
     orientations = np.ascontiguousarray(orientations_zarr.T)   # (Time, N)
 
     params = get_params(zarr_path)
-    L = params["box_size"]
+    L = params["box_size_nd"]
 
     num_steps, num_particles = orientations.shape
     num_thresholds = len(thresholds)
@@ -115,8 +115,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Calculate polar order parameter in the center of the box.")
     parser.add_argument("target_path", type=str, nargs='?', default=DEFAULT_TARGET_PATH, help="Path pattern for zarr files (e.g. 'data/seed*.zarr')")
     parser.add_argument("--min", type=float, default=0.0, help="Minimum threshold for interaction range")
-    parser.add_argument("--max", type=float, default=1.0, help="Maximum threshold for interaction range")
-    parser.add_argument("--step", type=float, default=0.01, help="Step size for threshold range")
+    parser.add_argument("--max", type=float, default=480.0, help="Maximum threshold for interaction range")
+    parser.add_argument("--step", type=float, default=1, help="Step size for threshold range")
     parser.add_argument("--threshold", type=float, default=0.28, help="Single threshold value (used if min/max not specified)")
 
     args = parser.parse_args()
