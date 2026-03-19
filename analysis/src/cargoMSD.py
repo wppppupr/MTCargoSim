@@ -13,7 +13,7 @@ from data_root import data_root
 # 設定
 # =============================================================================
 # 解析したいデータの親ディレクトリ
-BASE_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius1.0'
+BASE_PATH = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5_kMT0.0904_kcargo0.0226_radius0.5'
 # seed*.zarr にマッチするパスのリストを取得
 TARGET_SEEDS = sorted(list(BASE_PATH.glob('seed*.zarr')))
 
