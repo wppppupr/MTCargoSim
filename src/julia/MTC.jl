@@ -15,6 +15,7 @@ export Parameters, Datas, run_simulation, MT_simulation
     dt::Float64
     seed::Int
     cargo_radius::Float64
+    omega::Float64
     
     d_MT::Float64 = 0.025
     r_int::Float64 = 0.1
@@ -46,6 +47,7 @@ function Parameters(;
     dt::Float64,
     seed::Int,
     cargo_radius::Float64,
+    omega::Float64,
     d_MT::Float64 = 0.025,
     r_int::Float64 = 0.1,
     box_size::Float64 = 16.0,
@@ -70,7 +72,7 @@ function Parameters(;
     Dr = tau * Dr_exp
 
     return Parameters(
-        packing_fraction, A, dt, seed,
+        packing_fraction, A, dt, seed, omega,
         cargo_radius, d_MT, r_int, box_size, v_MT,
         warmup_dt, Dr_exp, k_cargo,
         k_MT, dna, f, tau, box_size_nd,
@@ -181,6 +183,8 @@ function step!(data::Datas, params::Parameters)
     A = params.A * tau
     Dr = params.Dr
     N = params.num_particles
+
+    omega = params.omega
     
     alignment_term = data.alignment_term
     sin_2theta = data.sin_2theta
@@ -252,7 +256,7 @@ function step!(data::Datas, params::Parameters)
     randn!(noise_buffer)
     @inbounds for i in 1:N
         noise = noise_buffer[i] * noise_std
-        orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
+        orientations[i] = mod(orientations[i] + alignment_term[i] * dt + omega * dt + noise, 2π)
         positions[1, i] += cos(orientations[i]) * dt
         positions[2, i] += sin(orientations[i]) * dt
     end
@@ -395,7 +399,7 @@ function transport_step!(data::Datas, params::Parameters)
     randn!(noise_buffer)
     @inbounds for i in 1:N
         noise = noise_buffer[i] * noise_std
-        orientations[i] = mod(orientations[i] + alignment_term[i] * dt + noise, 2π)
+        orientations[i] = mod(orientations[i] + alignment_term[i] * dt + omega * dt + noise, 2π)
 
         positions[1, i] += cos(orientations[i]) * dt - mu_MT * force_cargo_x[i] * dt
         positions[2, i] += sin(orientations[i]) * dt - mu_MT * force_cargo_y[i] * dt
