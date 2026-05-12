@@ -72,8 +72,8 @@ function Parameters(;
     Dr = tau * Dr_exp
 
     return Parameters(
-        packing_fraction, A, dt, seed, omega,
-        cargo_radius, d_MT, r_int, box_size, v_MT,
+        packing_fraction, A, dt, seed, cargo_radius, omega,
+        d_MT, r_int, box_size, v_MT,
         warmup_dt, Dr_exp, k_cargo,
         k_MT, dna, f, tau, box_size_nd,
         interaction_radius, num_particles,

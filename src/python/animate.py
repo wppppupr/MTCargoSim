@@ -151,9 +151,16 @@ def animate(data_folder, save_path = "animation/MT", box_size=16):
         print(f"保存が完了しました: {save_path}")
 
 if __name__ == "__main__":
-    data = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5' / 'seed1.zarr'
-    save_path = data_root() / 'Sasaki' / 'MTCargoSim' / 'MTC' / 'P0.5_A0.5' / 'seed1.zarr'
+    parser = argparse.ArgumentParser(description="Create animations with dynamic cargo radius.")
+    parser.add_argument("data_folder", type=str, help="Path to the simulation seed directory (e.g. MTC/P0.5...radius0.315/seed1.zarr)")
+    parser.add_argument("--save_path", type=str, default=None, help="Directory to save the animation. Default is inside the data_folder.")
+    parser.add_argument("--box_size", type=float, default=640.0, help="Box size for the animation (default: 16)")
+    
+    args = parser.parse_args()
+    data_folder = args.data_folder
+    save_path = args.save_path if args.save_path is not None else (Path(data_folder) / "animation")
+    box_size = args.box_size
 
     plt.style.use('my_style.mplstyle')
 
-    animate(data, save_path=save_path)
+    animate_onlyMT(data_folder, save_path=save_path, box_size=box_size)

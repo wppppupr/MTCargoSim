@@ -16,7 +16,7 @@ params = Parameters(
                     dt = 0.01,
                     seed = 1,
                     cargo_radius = 0.5,
-                    omega = pi/12
+                    omega = pi/1800
 )
 
 # 2. 保存先の指定 (Mac用に書き換え)
@@ -28,7 +28,7 @@ println("📂 保存先: $mac_base_path")
 # 3. シミュレーション実行 (1000ステップだけ回す)
 # base_path 引数でデフォルトのWindowsパスを上書きするのがポイントです
 MTC.MT_simulation(params, 20000; 
-    save_interval = 100, 
+    save_interval = 10, 
     base_path = mac_base_path
 )
 
