@@ -16,7 +16,7 @@ params = Parameters(
                     dt = 0.01,
                     seed = 1,
                     cargo_radius = 0.5,
-                    omega = pi/1800
+                    omega = pi/6000
 )
 
 # 2. 保存先の指定 (Mac用に書き換え)
