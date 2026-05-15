@@ -11,6 +11,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 # Add the project root to sys.path to import data_root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from data_root import data_root
+matplotlib.use('Agg')
 
 # =============================================================================
 # 設定

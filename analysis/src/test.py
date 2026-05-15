@@ -50,7 +50,9 @@ for i in range(1):
 
 ax.set(xlabel = 'Range $\\hat{R}$',
        ylabel = 'Polar order $P$',
-       xlim = (0,320),
-       ylim=(-0.1,1.1))
+       xlim = (1,320),
+       ylim=(0.01,1.0),
+       xscale = 'log',
+       yscale='log')
 
 fig.savefig(r"C:\Users\0704w\MTCargoSim\analysis\graph\figure\center_polar.png")
