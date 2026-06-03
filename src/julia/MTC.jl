@@ -39,6 +39,9 @@ export Parameters, Datas, run_simulation, MT_simulation
     dna_l::Float64
     epsilon::Float64                    
     Dr::Float64                         
+
+    sigma_LJ::Float64 = 1.0
+    epsilon_LJ::Float64 = 1.0
 end
 
 function Parameters(;
@@ -57,7 +60,9 @@ function Parameters(;
     k_cargo::Float64 = 2.26e-2,
     k_MT::Float64 = 9.04e-2,
     dna::Float64 = 0.01,
-    f::Float64 = 1.13e-2
+    f::Float64 = 1.13e-2,
+    sigma_LJ::Float64 = 1.0,
+    epsilon_LJ::Float64 = 1.0
 )
     tau = d_MT/v_MT
     box_size_nd = box_size/d_MT
@@ -78,7 +83,8 @@ function Parameters(;
         k_MT, dna, f, tau, box_size_nd,
         interaction_radius, num_particles,
         r_a, r_dna, dna_cut, r_dna_cut,
-        dna_l, epsilon, Dr
+        dna_l, epsilon, Dr,
+        sigma_LJ, epsilon_LJ
     )
 end
 
@@ -91,6 +97,8 @@ mutable struct Datas
     alignment_term::Vector{Float64}
     force_cargo_x::Vector{Float64}
     force_cargo_y::Vector{Float64}
+    force_MT_x::Vector{Float64}
+    force_MT_y::Vector{Float64}
     noise_buffer::Vector{Float64}
     
     # Cell Listのキャッシュ
@@ -122,6 +130,8 @@ function initialize(params::Parameters)
     alignment_term = zeros(num_particles)
     force_cargo_x = zeros(num_particles)
     force_cargo_y = zeros(num_particles)
+    force_MT_x = zeros(num_particles)
+    force_MT_y = zeros(num_particles)
     noise_buffer = zeros(num_particles)
     
     r_cut = params.interaction_radius
@@ -133,7 +143,7 @@ function initialize(params::Parameters)
     cos_2theta = zeros(num_particles)
 
     return Datas(positions, orientations, cargo_positions, 
-                 alignment_term, force_cargo_x, force_cargo_y, noise_buffer, 
+                 alignment_term, force_cargo_x, force_cargo_y, force_MT_x, force_MT_y, noise_buffer, 
                  head, list, sin_2theta, cos_2theta)
 end
 
@@ -186,14 +196,30 @@ function step!(data::Datas, params::Parameters)
 
     omega = params.omega
     
+    # LJ parameters
+    sigma_LJ = params.sigma_LJ
+    epsilon_LJ = params.epsilon_LJ
+    r_cut_LJ = 1.122462048309373 * sigma_LJ  # 2^(1/6) * sigma_LJ
+    r_cut_LJ_sq = r_cut_LJ^2
+    sigma_LJ_sq = sigma_LJ^2
+
+    k_MT = params.k_MT
+    mu_MT = tau / (k_MT * params.d_MT)
+    
     alignment_term = data.alignment_term
+    force_MT_x = data.force_MT_x
+    force_MT_y = data.force_MT_y
+    fill!(force_MT_x, 0.0)
+    fill!(force_MT_y, 0.0)
+
     sin_2theta = data.sin_2theta
     cos_2theta = data.cos_2theta
     head = data.head
     list = data.list
     noise_buffer = data.noise_buffer
     
-    n_cells, cell_size = update_cell_list!(head, list, positions, box_size_nd, r_cut)
+    max_r_cut = max(r_cut, r_cut_LJ)
+    n_cells, cell_size = update_cell_list!(head, list, positions, box_size_nd, max_r_cut)
     
     r_cut_sq = r_cut^2
 
@@ -218,6 +244,9 @@ function step!(data::Datas, params::Parameters)
         sum_c2 = 0.0
         n_neighbors = 0
         
+        sum_fMT_x = 0.0
+        sum_fMT_y = 0.0
+
         # 近傍の3x3セルのみを探索
         for dcx in -1:1, dcy in -1:1
             ccx = mod(cx + dcx, n_cells)
@@ -233,10 +262,20 @@ function step!(data::Datas, params::Parameters)
                     dx -= round(dx * inv_box) * box_size_nd
                     dy -= round(dy * inv_box) * box_size_nd
 
-                    if dx^2 + dy^2 < r_cut_sq
+                    r2 = dx^2 + dy^2
+                    if r2 < r_cut_sq
                         n_neighbors += 1
                         sum_s2 += sin_2theta[j]
                         sum_c2 += cos_2theta[j]
+                    end
+
+                    if r2 < r_cut_LJ_sq
+                        s2 = sigma_LJ_sq / r2
+                        s6 = s2^3
+                        s12 = s6^2
+                        f_mag_over_r = (24.0 * epsilon_LJ / r2) * (2.0 * s12 - s6)
+                        sum_fMT_x += f_mag_over_r * dx
+                        sum_fMT_y += f_mag_over_r * dy
                     end
                 end
                 j = list[j]
@@ -249,6 +288,9 @@ function step!(data::Datas, params::Parameters)
         else
             alignment_term[i] = 0.0
         end
+
+        force_MT_x[i] = sum_fMT_x
+        force_MT_y[i] = sum_fMT_y
     end
 
     # 向きと位置の更新 (In-place)
@@ -257,8 +299,8 @@ function step!(data::Datas, params::Parameters)
     @inbounds for i in 1:N
         noise = noise_buffer[i] * noise_std
         orientations[i] = mod(orientations[i] + alignment_term[i] * dt + omega * dt + noise, 2π)
-        positions[1, i] += cos(orientations[i]) * dt
-        positions[2, i] += sin(orientations[i]) * dt
+        positions[1, i] += cos(orientations[i]) * dt + mu_MT * force_MT_x[i] * dt
+        positions[2, i] += sin(orientations[i]) * dt + mu_MT * force_MT_y[i] * dt
     end
 end
 
@@ -278,17 +320,31 @@ function transport_step!(data::Datas, params::Parameters)
     epsilon = params.epsilon
     Dr = params.Dr
     N = params.num_particles
+    omega = params.omega
     
+    # LJ parameters
+    sigma_LJ = params.sigma_LJ
+    epsilon_LJ = params.epsilon_LJ
+    r_cut_LJ = 1.122462048309373 * sigma_LJ
+    r_cut_LJ_sq = r_cut_LJ^2
+    sigma_LJ_sq = sigma_LJ^2
+
     alignment_term = data.alignment_term
     force_cargo_x = data.force_cargo_x
     force_cargo_y = data.force_cargo_y
+    force_MT_x = data.force_MT_x
+    force_MT_y = data.force_MT_y
+    fill!(force_MT_x, 0.0)
+    fill!(force_MT_y, 0.0)
+    
     sin_2theta = data.sin_2theta
     cos_2theta = data.cos_2theta
     head = data.head
     list = data.list
     noise_buffer = data.noise_buffer
     
-    n_cells, cell_size = update_cell_list!(head, list, positions, box_size_nd, r_cut)
+    max_r_cut = max(r_cut, r_cut_LJ)
+    n_cells, cell_size = update_cell_list!(head, list, positions, box_size_nd, max_r_cut)
 
     r_cut_sq = r_cut^2
     r_dna_cut_sq = r_dna_cut^2
@@ -305,7 +361,7 @@ function transport_step!(data::Datas, params::Parameters)
         cos_2theta[i] = cos(2 * orientations[i])
     end
 
-    # --- 1. 微小管同士の整列 (Cell List) ---
+    # --- 1. 微小管同士の整列とLJ斥力相互作用 (Cell List) ---
     @inbounds for i in 1:N
         x_i = positions[1,i]
         y_i = positions[2,i]
@@ -318,6 +374,9 @@ function transport_step!(data::Datas, params::Parameters)
         sum_s2 = 0.0
         sum_c2 = 0.0
         n_neighbors = 0
+        
+        sum_fMT_x = 0.0
+        sum_fMT_y = 0.0
         
         for dcx in -1:1, dcy in -1:1
             ccx = mod(cx + dcx, n_cells)
@@ -333,10 +392,20 @@ function transport_step!(data::Datas, params::Parameters)
                     dx -= round(dx * inv_box) * box_size_nd
                     dy -= round(dy * inv_box) * box_size_nd
 
-                    if dx^2 + dy^2 < r_cut_sq
+                    r2 = dx^2 + dy^2
+                    if r2 < r_cut_sq
                         n_neighbors += 1
                         sum_s2 += sin_2theta[j]
                         sum_c2 += cos_2theta[j]
+                    end
+                    
+                    if r2 < r_cut_LJ_sq
+                        s2 = sigma_LJ_sq / r2
+                        s6 = s2^3
+                        s12 = s6^2
+                        f_mag_over_r = (24.0 * epsilon_LJ / r2) * (2.0 * s12 - s6)
+                        sum_fMT_x += f_mag_over_r * dx
+                        sum_fMT_y += f_mag_over_r * dy
                     end
                 end
                 j = list[j]
@@ -349,6 +418,9 @@ function transport_step!(data::Datas, params::Parameters)
         else
             alignment_term[i] = 0.0
         end
+        
+        force_MT_x[i] = sum_fMT_x
+        force_MT_y[i] = sum_fMT_y
     end
 
     # --- 2. 貨物との相互作用 (力のカットオフ適用) ---
@@ -401,8 +473,8 @@ function transport_step!(data::Datas, params::Parameters)
         noise = noise_buffer[i] * noise_std
         orientations[i] = mod(orientations[i] + alignment_term[i] * dt + omega * dt + noise, 2π)
 
-        positions[1, i] += cos(orientations[i]) * dt - mu_MT * force_cargo_x[i] * dt
-        positions[2, i] += sin(orientations[i]) * dt - mu_MT * force_cargo_y[i] * dt
+        positions[1, i] += cos(orientations[i]) * dt - mu_MT * force_cargo_x[i] * dt + mu_MT * force_MT_x[i] * dt
+        positions[2, i] += sin(orientations[i]) * dt - mu_MT * force_cargo_y[i] * dt + mu_MT * force_MT_y[i] * dt
     end
     
     cargo_positions[1] += mu_cargo * sum_fc_x * dt
