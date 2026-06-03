@@ -14,7 +14,7 @@ A = 0.5
 dt = 0.01
 seed = 1234
 cargo_radius = 1.18
-omega = pi/6000
+omega = 0
 
 # 1. Instantiate Parameters with LJ fields
 params = Parameters(

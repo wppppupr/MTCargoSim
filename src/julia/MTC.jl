@@ -196,6 +196,7 @@ function step!(data::Datas, params::Parameters)
 
     omega = params.omega
     
+    
     # LJ parameters
     sigma_LJ = params.sigma_LJ
     epsilon_LJ = params.epsilon_LJ
@@ -262,7 +263,7 @@ function step!(data::Datas, params::Parameters)
                     dx -= round(dx * inv_box) * box_size_nd
                     dy -= round(dy * inv_box) * box_size_nd
 
-                    r2 = dx^2 + dy^2
+                    r2 = muladd(dx, dx, dy*dy)
                     if r2 < r_cut_sq
                         n_neighbors += 1
                         sum_s2 += sin_2theta[j]
@@ -271,8 +272,9 @@ function step!(data::Datas, params::Parameters)
 
                     if r2 < r_cut_LJ_sq
                         s2 = sigma_LJ_sq / r2
-                        s6 = s2^3
-                        s12 = s6^2
+                        s4 = s2*s2
+                        s6 = s4*s2
+                        s12 = s6*s6
                         f_mag_over_r = (24.0 * epsilon_LJ / r2) * (2.0 * s12 - s6)
                         sum_fMT_x += f_mag_over_r * dx
                         sum_fMT_y += f_mag_over_r * dy
@@ -389,10 +391,10 @@ function transport_step!(data::Datas, params::Parameters)
                     dx = x_i - positions[1,j]
                     dy = y_i - positions[2,j]
 
-                    dx -= round(dx * inv_box) * box_size_nd
-                    dy -= round(dy * inv_box) * box_size_nd
+                    dx -= floor(dx * inv_box + 0.5) * box_size_nd
+                    dy -= floor(dy * inv_box + 0.5) * box_size_nd
 
-                    r2 = dx^2 + dy^2
+                    r2 = muladd(dx, dx, dy*dy)
                     if r2 < r_cut_sq
                         n_neighbors += 1
                         sum_s2 += sin_2theta[j]
@@ -401,8 +403,9 @@ function transport_step!(data::Datas, params::Parameters)
                     
                     if r2 < r_cut_LJ_sq
                         s2 = sigma_LJ_sq / r2
-                        s6 = s2^3
-                        s12 = s6^2
+                        s4 = s2*s2
+                        s6 = s4*s2
+                        s12 = s6*s6
                         f_mag_over_r = (24.0 * epsilon_LJ / r2) * (2.0 * s12 - s6)
                         sum_fMT_x += f_mag_over_r * dx
                         sum_fMT_y += f_mag_over_r * dy
