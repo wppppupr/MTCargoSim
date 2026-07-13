@@ -3,7 +3,7 @@ set -e
 
 # デフォルトのパラメータ設定 (引数で上書き可能)
 # 使い方: ./run_test_and_animate.sh [CARGO_RADIUS] [PACKING_FRACTION] [A] [K_MT] [K_CARGO] [SEED]
-CARGO_RADIUS=${1:-3.34}
+CARGO_RADIUS=${1:-0.59}
 PACKING_FRACTION=${2:-0.5}
 A=${3:-0.5}
 K_MT=${4:-0.0904}

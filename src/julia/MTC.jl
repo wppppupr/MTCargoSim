@@ -122,38 +122,46 @@ function dna_force(epsilon, r, r_a)
     return -2 * epsilon * r * exp(-(r^2)/(r_a^2)) / r_a^2 
 end
 
-# 1. Lennard-Jones ポテンシャル (エネルギー)
-function LJ(r, epsilon, sigma)
-    s6 = (sigma / r)^6
-    return 4 * epsilon * (s6^2 - s6)
+# 1. リング状のガウシアンポテンシャル（ベース）
+function Ring_Gaussian(r, H, r_ring, w)
+    return -H * exp(-(r - r_ring)^2 / (2.0 * w^2))
 end
 
-# 2. LJの微分 (力 / ポテンシャルの傾き)
-function dot_LJ(r, epsilon, sigma)
-    inv_r = 1.0 / r
-    s6 = (sigma / r)^6
-    return -4 * epsilon * inv_r * (-12 * s6^2 + 6 * s6)
+# 2. リング状のガウシアンポテンシャルの微分（力 / ベース）
+function dot_Ring_Gaussian(r, H, r_ring, w)
+    return H * ((r - r_ring) / w^2) * exp(-(r - r_ring)^2 / (2.0 * w^2))
 end
 
-# 3. Force-Shifted LJ ポテンシャル
-function LJ_fs(r, epsilon, sigma, r_cut)
+# 3. カットオフ（フォースシフト）を施したリング状ガウシアンポテンシャル（エネルギー）
+function Ring_Gaussian_fs(r, H, r_ring, w, r_cut)
     if r <= r_cut
-        return LJ(r, epsilon, sigma) - LJ(r_cut, epsilon, sigma) - (r - r_cut) * dot_LJ(r_cut, epsilon, sigma)
+        # 共通部分の計算
+        shift = Ring_Gaussian(r_cut, H, r_ring, w)
+        dot_shift = dot_Ring_Gaussian(r_cut, H, r_ring, w)
+        
+        return Ring_Gaussian(r, H, r_ring, w) - shift - (r - r_cut) * dot_shift
     else
         return 0.0
     end
 end
 
-# 4. Force-Shifted LJ の微分
-function dot_LJ_fs(r, epsilon, sigma, r_cut)
-    return r <= r_cut ? dot_LJ(r, epsilon, sigma) - dot_LJ(r_cut, epsilon, sigma) : 0.0
+# 4. カットオフ（フォースシフト）を施したリング状ガウシアンの微分（力）
+function dot_Ring_Gaussian_fs(r, H, r_ring, w, r_cut)
+    return r <= r_cut ? dot_Ring_Gaussian(r, H, r_ring, w) - dot_Ring_Gaussian(r_cut, H, r_ring, w) : 0.0
 end
 
 # 5. 距離配列専用の最適化関数
-function dot_LJ_fs_array!(out::Vector{Float64}, R_sq::Vector{Float64}, epsilon::Float64, sigma::Float64, r_cut_sq::Float64)
+function dot_Ring_Gaussian_fs_array!(out::Vector{Float64}, R_sq::Vector{Float64}, H::Float64, r_ring::Float64, w::Float64, r_cut_sq::Float64)
+    r_cut = sqrt(r_cut_sq)
+    dot_shift = dot_Ring_Gaussian(r_cut, H, r_ring, w)
+    
     @simd for i in eachindex(R_sq)
-        r = sqrt(R_sq[i])
-        out[i] = R_sq[i] <= r_cut_sq ? dot_LJ(r, epsilon, sigma) - dot_LJ(sqrt(r_cut_sq), epsilon, sigma) : 0.0
+        @inbounds if R_sq[i] <= r_cut_sq
+            r = sqrt(R_sq[i])
+            out[i] = dot_Ring_Gaussian(r, H, r_ring, w) - dot_shift
+        else
+            out[i] = 0.0
+        end
     end
     return nothing
 end
@@ -503,14 +511,17 @@ function transport_step!(data::Datas, params::Parameters)
         cargo_r_sq[i] = dx^2 + dy^2
     end
 
-    # 配列計算で力を一括評価 (LJパラメータとして r_a, r_dna_cut_sq を使用)
-    dot_LJ_fs_array!(cargo_f_mag, cargo_r_sq, epsilon, r_a, r_dna_cut_sq)
+    # 配列計算で力を一括評価 (リング状ガウシアンポテンシャルを使用)
+    # 幅 w は dna_l を用いる
+    w_gaussian = params.dna_l * 2
+    dot_Ring_Gaussian_fs_array!(cargo_f_mag, cargo_r_sq, epsilon, r_a, w_gaussian, r_dna_cut_sq)
 
     @inbounds for i in 1:N
         # --- 力のカットオフ：r_dna_cut_sqの距離内でのみ加算 ---
         if cargo_r_sq[i] < r_dna_cut_sq
             # LJポテンシャル力 (cargo_f_mag は力の大きさ。距離で割ってベクトル化する)
-            f_mag_over_r = cargo_f_mag[i] / sqrt(cargo_r_sq[i])
+            r_safe = max(sqrt(cargo_r_sq[i]), 1e-6)
+            f_mag_over_r = cargo_f_mag[i] / r_safe
             
             fc_x = f_mag_over_r * cargo_dx[i]
             fc_y = f_mag_over_r * cargo_dy[i]
