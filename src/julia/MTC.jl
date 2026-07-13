@@ -108,6 +108,12 @@ mutable struct Datas
     # 計算削減のためのキャッシュ
     sin_2theta::Vector{Float64}
     cos_2theta::Vector{Float64}
+    
+    # 貨物との相互作用キャッシュ
+    cargo_dx::Vector{Float64}
+    cargo_dy::Vector{Float64}
+    cargo_r_sq::Vector{Float64}
+    cargo_f_mag::Vector{Float64}
 end
 
 # --- ヘルパー関数 ---
@@ -115,6 +121,44 @@ end
 function dna_force(epsilon, r, r_a)
     return -2 * epsilon * r * exp(-(r^2)/(r_a^2)) / r_a^2 
 end
+
+# 1. Lennard-Jones ポテンシャル (エネルギー)
+function LJ(r, epsilon, sigma)
+    s6 = (sigma / r)^6
+    return 4 * epsilon * (s6^2 - s6)
+end
+
+# 2. LJの微分 (力 / ポテンシャルの傾き)
+function dot_LJ(r, epsilon, sigma)
+    inv_r = 1.0 / r
+    s6 = (sigma / r)^6
+    return -4 * epsilon * inv_r * (-12 * s6^2 + 6 * s6)
+end
+
+# 3. Force-Shifted LJ ポテンシャル
+function LJ_fs(r, epsilon, sigma, r_cut)
+    if r <= r_cut
+        return LJ(r, epsilon, sigma) - LJ(r_cut, epsilon, sigma) - (r - r_cut) * dot_LJ(r_cut, epsilon, sigma)
+    else
+        return 0.0
+    end
+end
+
+# 4. Force-Shifted LJ の微分
+function dot_LJ_fs(r, epsilon, sigma, r_cut)
+    return r <= r_cut ? dot_LJ(r, epsilon, sigma) - dot_LJ(r_cut, epsilon, sigma) : 0.0
+end
+
+# 5. 距離配列専用の最適化関数
+function dot_LJ_fs_array!(out::Vector{Float64}, R_sq::Vector{Float64}, epsilon::Float64, sigma::Float64, r_cut_sq::Float64)
+    @simd for i in eachindex(R_sq)
+        r = sqrt(R_sq[i])
+        out[i] = R_sq[i] <= r_cut_sq ? dot_LJ(r, epsilon, sigma) - dot_LJ(sqrt(r_cut_sq), epsilon, sigma) : 0.0
+    end
+    return nothing
+end
+
+# --- 初期化 ---
 
 function initialize(params::Parameters)
     Random.seed!(params.seed)
@@ -141,10 +185,16 @@ function initialize(params::Parameters)
     
     sin_2theta = zeros(num_particles)
     cos_2theta = zeros(num_particles)
+    
+    cargo_dx = zeros(num_particles)
+    cargo_dy = zeros(num_particles)
+    cargo_r_sq = zeros(num_particles)
+    cargo_f_mag = zeros(num_particles)
 
     return Datas(positions, orientations, cargo_positions, 
                  alignment_term, force_cargo_x, force_cargo_y, force_MT_x, force_MT_y, noise_buffer, 
-                 head, list, sin_2theta, cos_2theta)
+                 head, list, sin_2theta, cos_2theta,
+                 cargo_dx, cargo_dy, cargo_r_sq, cargo_f_mag)
 end
 
 # In-placeでメモリアロケーションを防ぐ
@@ -436,6 +486,11 @@ function transport_step!(data::Datas, params::Parameters)
     fill!(force_cargo_x, 0.0)
     fill!(force_cargo_y, 0.0)
 
+    cargo_dx = data.cargo_dx
+    cargo_dy = data.cargo_dy
+    cargo_r_sq = data.cargo_r_sq
+    cargo_f_mag = data.cargo_f_mag
+
     @inbounds for i in 1:N
         dx = x_cargo - positions[1,i]
         dy = y_cargo - positions[2,i]
@@ -443,23 +498,22 @@ function transport_step!(data::Datas, params::Parameters)
         dx -= round(dx / box_size_nd) * box_size_nd
         dy -= round(dy / box_size_nd) * box_size_nd
 
-        r2 = dx^2 + dy^2
+        cargo_dx[i] = dx
+        cargo_dy[i] = dy
+        cargo_r_sq[i] = dx^2 + dy^2
+    end
 
-        # --- 力のカットオフ：r_dnaの距離内でのみ計算 ---
-        if r2 < r_dna_cut_sq
+    # 配列計算で力を一括評価 (LJパラメータとして r_a, r_dna_cut_sq を使用)
+    dot_LJ_fs_array!(cargo_f_mag, cargo_r_sq, epsilon, r_a, r_dna_cut_sq)
 
-            """
-            # こっちだと割り算や平方根の処理を挟んでいて遅い
-            r = sqrt(r2)
-            f_val = dna_force(epsilon, r, r_a)
+    @inbounds for i in 1:N
+        # --- 力のカットオフ：r_dna_cut_sqの距離内でのみ加算 ---
+        if cargo_r_sq[i] < r_dna_cut_sq
+            # LJポテンシャル力 (cargo_f_mag は力の大きさ。距離で割ってベクトル化する)
+            f_mag_over_r = cargo_f_mag[i] / sqrt(cargo_r_sq[i])
             
-            fc_x = f_val * dx / r
-            fc_y = f_val * dy / r
-            """
-            f_mag_over_r = -2.0 * epsilon * exp(-r2 * inv_r_a_sq) * inv_r_a_sq # こっちの方が速い
-            
-            fc_x = f_mag_over_r * dx
-            fc_y = f_mag_over_r * dy
+            fc_x = f_mag_over_r * cargo_dx[i]
+            fc_y = f_mag_over_r * cargo_dy[i]
             
             force_cargo_x[i] = fc_x
             force_cargo_y[i] = fc_y
@@ -519,6 +573,9 @@ function MT_simulation(params::Parameters, num_steps::Int; save_interval::Int=10
     # NASパスの設定 (joinpathを使用)
     folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_kMT$(params.k_MT)_kcargo$(params.k_cargo)_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
     
+    if isdir(folder_path)
+        rm(folder_path, recursive=true, force=true)
+    end
     mkpath(folder_path)
 
     # パラメータ保存
@@ -585,6 +642,9 @@ function run_simulation(params::Parameters, warmup::Int,  num_steps::Int; save_i
     # --- Zarr保存処理 ---
     folder_path = joinpath(base_path, "P$(params.packing_fraction)_A$(params.A)_kMT$(params.k_MT)_kcargo$(params.k_cargo)_radius$(params.cargo_radius)", "seed$(params.seed).zarr")
     
+    if isdir(folder_path)
+        rm(folder_path, recursive=true, force=true)
+    end
     mkpath(folder_path)
 
     open(joinpath(folder_path, "parameters.txt"), "w") do io
