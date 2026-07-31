@@ -15,6 +15,7 @@ venv/
 *.png
 *.pdf
 *.zarr
+*.svg
 
 # Data (計算結果などの巨大ファイルは無視)
 data/*.npy
