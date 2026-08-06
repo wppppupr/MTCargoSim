@@ -117,41 +117,36 @@ mutable struct Datas
 end
 
 # --- ヘルパー関数 ---
-
-function dna_force(epsilon, r, r_a)
-    return -2 * epsilon * r * exp(-(r^2)/(r_a^2)) / r_a^2 
-end
-
 # 1. リング状のガウシアンポテンシャル（ベース）
-function Ring_Gaussian(r, H, r_ring, w)
-    return -H * exp(-(r - r_ring)^2 / (2.0 * w^2))
+function Ring_Gaussian(r, H, r_0, w)
+    return -H * exp(-(r - r_0)^2 / (2.0 * w^2))
 end
 
 # 2. リング状のガウシアンポテンシャルの微分（力 / ベース）
-function dot_Ring_Gaussian(r, H, r_ring, w)
-    return H * ((r - r_ring) / w^2) * exp(-(r - r_ring)^2 / (2.0 * w^2))
+function dot_Ring_Gaussian(r, H, r_0, w)
+    return H * ((r - r_0) / w^2) * exp(-(r - r_0)^2 / (2.0 * w^2))
 end
 
 # 3. カットオフ（フォースシフト）を施したリング状ガウシアンポテンシャル（エネルギー）
-function Ring_Gaussian_fs(r, H, r_ring, w, r_cut)
+function Ring_Gaussian_fs(r, H, r_0, w, r_cut)
     if r <= r_cut
         # 共通部分の計算
-        shift = Ring_Gaussian(r_cut, H, r_ring, w)
-        dot_shift = dot_Ring_Gaussian(r_cut, H, r_ring, w)
+        shift = Ring_Gaussian(r_cut, H, r_0, w)
+        dot_shift = dot_Ring_Gaussian(r_cut, H, r_0, w)
         
-        return Ring_Gaussian(r, H, r_ring, w) - shift - (r - r_cut) * dot_shift
+        return Ring_Gaussian(r, H, r_0, w) - shift - (r - r_cut) * dot_shift
     else
         return 0.0
     end
 end
 
 # 4. カットオフ（フォースシフト）を施したリング状ガウシアンの微分（力）
-function dot_Ring_Gaussian_fs(r, H, r_ring, w, r_cut)
-    return r <= r_cut ? dot_Ring_Gaussian(r, H, r_ring, w) - dot_Ring_Gaussian(r_cut, H, r_ring, w) : 0.0
+function dot_Ring_Gaussian_fs(r, H, r_0, w, r_cut)
+    return r <= r_cut ? dot_Ring_Gaussian(r, H, r_0, w) - dot_Ring_Gaussian(r_cut, H, r_0, w) : 0.0
 end
 
 # 5. 距離配列専用の最適化関数
-function dot_Ring_Gaussian_fs_array!(out::Vector{Float64}, R_sq::Vector{Float64}, H::Float64, r_ring::Float64, w::Float64, r_cut_sq::Float64)
+function dot_Ring_Gaussian_fs_array!(out::Vector{Float64}, R_sq::Vector{Float64}, H::Float64, r_0::Float64, w::Float64, r_cut_sq::Float64)
     r_cut = sqrt(r_cut_sq)
     dot_shift = dot_Ring_Gaussian(r_cut, H, r_ring, w)
     

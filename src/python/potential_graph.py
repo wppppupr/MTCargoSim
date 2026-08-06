@@ -17,23 +17,11 @@ def ring_gaussian(r: np.ndarray, H: float, r_ring: float, w: float) -> np.ndarra
     """リング状ガウシアンポテンシャルを計算する"""
     return -H * np.exp(- (r - r_ring)**2 / (2.0 * w**2))
 
-def switch_poly5(r: np.ndarray, rs: float, rc: float) -> np.ndarray:
-    """5次多項式によるスイッチング関数を計算する"""
-    x = (r - rs) / (rc - rs)
-    return np.where(
-        r < rs,
-        1.0,
-        np.where(
-            r < rc,
-            1.0 - 10.0 * x**3 + 15.0 * x**4 - 6.0 * x**5,
-            0.0
-        )
-    )
+def dot_ring_gaussian(r, H, r_0, w):
+    return  - H * ((r-r_0)/w**2) * np.exp(- (r - r_0)**2 / (2.0 * w**2))
 
-def ring_gaussian_switch(r: np.ndarray, H: float, r0: float, w: float, rs: float, rc: float) -> np.ndarray:
-    """カットオフを適用したリング状ガウシアンポテンシャルを計算する"""
-    u_pot = ring_gaussian(r, H, r0, w)
-    return u_pot * switch_poly5(r, rs, rc)
+def ring_gaussian_cut(r, H, r_0, w, r_cut):
+    return np.where(r < r_cut, ring_gaussian(r, H, r_0, w)-ring_gaussian(r_cut, H, r_0, w) + dot_ring_gaussian(r_cut, H, r_0, w)*(r-r_cut), 0)
 
 def calc_r_0(radius: float, d: float) -> float:
     """ポテンシャルが最も深くなる半径 (r_0) を計算する"""
@@ -53,36 +41,15 @@ def main() -> None:
     H = 1
     r_ring_val = 0.4
     w = 0.8
-    r_s = r_ring_val + 4 * w
-    r_cut_val = r_s + 5 * w
-
-    """
-    radius_ex = 1
-    
-    # 物理パラメータ
-    d_mt = 0.025  # MTs diameter (μm)
-    l_dna = 0.01  # DNA linker length (μm)
-    
-    # リング状ガウシアンパラメータ
-    H = 1       # 井戸の深さ
-    w = 2 * l_dna # 結合の許容幅 (狭いほど鋭いポケットになる)
-    
-
-    # 重要な半径の計算
-    r_ring_val = calc_r_0(radius_ex, d_mt)
-    r_s = calc_r_cut(radius_ex, d_mt, l_dna)
     r_cut_val = r_ring_val + 4*w
 
-    print(r_ring_val, r_s, r_cut_val)
-    """
-
-    cmap = 'viridis'
+    cmap = 'viridis_r'
     
     # ==========================================
     # データ準備
     # ==========================================
     # 描画範囲 (r_cutよりも少し広い範囲を設定)
-    limit = r_cut_val *1.2
+    limit = 5
     
     # 描画の滑らかさとパフォーマンスのバランスをとるため、グリッドサイズを 500x500 に設定
     x = np.linspace(-limit, limit, 500)
@@ -93,7 +60,7 @@ def main() -> None:
     R = np.sqrt(X**2 + Y**2)
     
     # 2次元グリッド上でポテンシャルを計算
-    Z = ring_gaussian_switch(R, H, r_ring_val, w, r_s, r_cut_val)
+    Z = ring_gaussian_cut(R, H, r_ring_val, w, r_cut_val)
     
     # ==========================================
     # 2D 等高線（ヒートマップ）プロット
@@ -104,38 +71,42 @@ def main() -> None:
 
     r = np.linspace(0, 5, 5000)
     # ③ リング状ガウシアン (特定の距離だけポコッと凹む相互作用)
-    ax.plot(r, ring_gaussian_switch(r, H, r_ring_val, w, r_s, r_cut_val))
+    ax.plot(r, ring_gaussian_cut(r, H, r_ring_val, w, r_cut_val))
+    ax.set_xlabel('$\\tilde{r}$')
+    ax.set_ylabel('Dimensionless Effective Potential')
     
-    fig.savefig(f'figures/potential.svg')
+    #fig.savefig(f'figures/potential.svg')
+    fig.savefig(f'/Volumes/data/Sasaki/MTsingleBeads/figure/potential.svg')
 
     fig1, ax1 = plt.subplots()
     
     # 等高線マップ
     contour = ax1.contourf(X, Y, Z, levels=50, cmap=cmap)
     cbar1 = fig1.colorbar(contour, ax=ax1, fraction=0.046, pad=0.04)
-    cbar1.set_label('Potential Energy', rotation=270, labelpad=25)
+    cbar1.set_label('Dimensionless Effective Potential', rotation=270, labelpad=25)
     
     # 最もポテンシャルが深いリング(r_ring)を描画
     circle_ring = plt.Circle(
-        (0, 0), r_ring_val, color='red', fill=False, 
-        linestyle='--', linewidth=2, label=f'r_ring = {r_ring_val:.3f}'
+        (0, 0), 1, color='#ffffff', fill=False, 
+        linestyle='--', linewidth=2, label=f'$D_C/2$'
     )
     ax1.add_patch(circle_ring)
     
+    
     # カットオフ距離(r_cut)を描画
     circle_cut = plt.Circle(
-        (0, 0), r_cut_val, color='black', fill=False, 
-        linestyle=':', linewidth=2, alpha=0.8, label=f'r_cut = {r_cut_val:.3f}'
+        (0, 0), r_cut_val, color='#CC6677', fill=False, 
+        linestyle=':', linewidth=2, alpha=0.8, label='$r_\mathrm{cut}$'
     )
     ax1.add_patch(circle_cut)
     
     ax1.set_aspect('equal', adjustable='box')
-    ax1.set_xlabel('x [μm]')
-    ax1.set_ylabel('y [μm]')
-    ax1.set_title(f'2D Ring Gaussian Potential')
+    ax1.set_xlabel('$2x/D_c$')
+    ax1.set_ylabel('$2y/D_c$')
+    #ax1.set_title(f'2D Ring Gaussian Potential')
     ax1.legend()
 
-    fig1.savefig(f'figures/potential_2d.svg')
+    fig1.savefig(f'/Volumes/data/Sasaki/MTsingleBeads/figure/potential_2d.svg')
     
     # ==========================================
     # 3D 曲面（サーフェス）プロット
@@ -146,22 +117,26 @@ def main() -> None:
     # 曲面を描画
     surf = ax2.plot_surface(X, Y, Z, cmap=cmap, edgecolor='none', alpha=0.85)
     cbar2 = fig2.colorbar(surf, ax=ax2, shrink=0.5, aspect=10, pad=0.1)
-    cbar2.set_label('Potential Energy', rotation=270, labelpad=25)
+    cbar2.set_label('Dimensionless Effective Potential', rotation=270, labelpad=20)
     
     # 3Dプロットの下部に等高線を投影し、奥行きとポテンシャルの底を分かりやすくする
     z_min = np.min(Z)
     ax2.contour(X, Y, Z, zdir='z', offset=z_min - 0.2, levels=30, cmap=cmap, alpha=0.5)
     
+
     ax2.set_zlim(z_min - 0.2, np.max(Z) + 0.1)
-    ax2.set_xlabel('x [μm]')
-    ax2.set_ylabel('y [μm]')
-    ax2.set_zlabel('Potential Energy')
-    ax2.set_title(f'3D Ring Gaussian Potential')
+    ax2.set_xlabel('$2x/D_c$', labelpad=10)
+    ax2.set_ylabel('$2y/D_c$', labelpad=10)
+    ax2.set_zlabel('Dimensionless Effective Potential', labelpad=15)
+    
+
+    #ax2.set_title(f'3D Ring Gaussian Potential')
     
     # 見やすいように初期の視点（カメラアングル）を調整
-    ax2.view_init(elev=35, azim=45)
+    #ax2.view_init(elev=35, azim=45)
 
-    fig2.savefig(f'figures/potential_3d.svg')
+    fig2.tight_layout()
+    fig2.savefig(f'/Volumes/data/Sasaki/MTsingleBeads/figure/potential_3d.svg', bbox_inches='tight')
 
 if __name__ == '__main__':
     main()
